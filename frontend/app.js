@@ -13,7 +13,7 @@ const API_BASE_URL = 'http://localhost:8081/api/accounts';
 // DOM References
 // =============================================
 
-const accountsTableBody = document.getElementById('accounts-tbody');
+const  accountsTableBody = document.getElementById('accounts-tbody');
 const accountForm = document.getElementById('account-form');
 const editForm = document.getElementById('edit-form');
 const searchInput = document.getElementById('search-input');
