@@ -1,6 +1,6 @@
 /**
  * NexBank — Banking System Frontend
- * Vanilla JavaScript for CRUD operations via REST API
+ * Vanilla JavaScript for CRUD + Banking operations via REST API
  */
 
 // =============================================
@@ -13,7 +13,7 @@ const API_BASE_URL = 'http://localhost:8081/api/accounts';
 // DOM References
 // =============================================
 
-const  accountsTableBody = document.getElementById('accounts-tbody');
+const accountsTableBody = document.getElementById('accounts-tbody');
 const accountForm = document.getElementById('account-form');
 const editForm = document.getElementById('edit-form');
 const searchInput = document.getElementById('search-input');
@@ -24,6 +24,25 @@ const deleteOverlay = document.getElementById('delete-overlay');
 const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
 const emptyState = document.getElementById('empty-state');
 const toastContainer = document.getElementById('toast-container');
+
+// Transaction modal
+const txnModalOverlay = document.getElementById('txn-modal-overlay');
+const txnModalClose = document.getElementById('txn-modal-close');
+const txnForm = document.getElementById('txn-form');
+const txnModalTitle = document.getElementById('txn-modal-title');
+const txnBtnText = document.getElementById('txn-btn-text');
+const txnSubmitBtn = document.getElementById('txn-submit-btn');
+const txnAccountInfo = document.getElementById('txn-account-info');
+
+// History modal
+const historyOverlay = document.getElementById('history-overlay');
+const historyClose = document.getElementById('history-close');
+const historyTitle = document.getElementById('history-title');
+const historyAccountInfo = document.getElementById('history-account-info');
+const historyTableWrapper = document.getElementById('history-table-wrapper');
+const historyTbody = document.getElementById('history-tbody');
+const historyLoading = document.getElementById('history-loading');
+const historyEmpty = document.getElementById('history-empty');
 
 // Stats
 const totalAccountsEl = document.getElementById('total-accounts');
@@ -48,11 +67,8 @@ document.querySelectorAll('.nav-link').forEach(link => {
 });
 
 function switchSection(sectionName) {
-    // Update nav links
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
     document.querySelector(`.nav-link[data-section="${sectionName}"]`)?.classList.add('active');
-
-    // Update sections
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.getElementById(`${sectionName}-section`)?.classList.add('active');
 }
@@ -63,12 +79,14 @@ function switchSection(sectionName) {
 
 /**
  * Fetch all accounts from the backend.
+ * API now returns { status, message, data } wrapper.
  */
 async function fetchAccounts() {
     try {
         const response = await fetch(API_BASE_URL);
         if (!response.ok) throw new Error('Failed to fetch accounts');
-        allAccounts = await response.json();
+        const result = await response.json();
+        allAccounts = result.data || result; // Support both ApiResponse and raw array
         renderAccounts(allAccounts);
         updateStats(allAccounts);
     } catch (error) {
@@ -81,6 +99,9 @@ async function fetchAccounts() {
  * Create a new account.
  */
 async function createAccount(accountData) {
+    const submitBtn = document.getElementById('submit-btn');
+    setButtonLoading(submitBtn, true, 'Creating...');
+
     try {
         const response = await fetch(API_BASE_URL, {
             method: 'POST',
@@ -88,12 +109,13 @@ async function createAccount(accountData) {
             body: JSON.stringify(accountData),
         });
 
-        const data = await response.json();
+        const result = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error || 'Failed to create account');
+            throw new Error(result.message || result.error || 'Failed to create account');
         }
 
+        const data = result.data || result;
         showToast(`Account created successfully for ${data.accountHolderName}`, 'success');
         resetForm();
         switchSection('dashboard');
@@ -101,6 +123,10 @@ async function createAccount(accountData) {
     } catch (error) {
         console.error('Error creating account:', error);
         showToast(error.message, 'error');
+    } finally {
+        setButtonLoading(submitBtn, false, `
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Create Account`);
     }
 }
 
@@ -108,6 +134,9 @@ async function createAccount(accountData) {
  * Update an existing account.
  */
 async function updateAccount(id, accountData) {
+    const submitBtn = editForm.querySelector('button[type="submit"]');
+    setButtonLoading(submitBtn, true, 'Saving...');
+
     try {
         const response = await fetch(`${API_BASE_URL}/${id}`, {
             method: 'PUT',
@@ -115,10 +144,10 @@ async function updateAccount(id, accountData) {
             body: JSON.stringify(accountData),
         });
 
-        const data = await response.json();
+        const result = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error || 'Failed to update account');
+            throw new Error(result.message || result.error || 'Failed to update account');
         }
 
         showToast('Account updated successfully', 'success');
@@ -127,6 +156,8 @@ async function updateAccount(id, accountData) {
     } catch (error) {
         console.error('Error updating account:', error);
         showToast(error.message, 'error');
+    } finally {
+        setButtonLoading(submitBtn, false, 'Save Changes');
     }
 }
 
@@ -134,14 +165,16 @@ async function updateAccount(id, accountData) {
  * Delete an account.
  */
 async function deleteAccount(id) {
+    setButtonLoading(confirmDeleteBtn, true, 'Deleting...');
+
     try {
         const response = await fetch(`${API_BASE_URL}/${id}`, {
             method: 'DELETE',
         });
 
         if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.error || 'Failed to delete account');
+            const result = await response.json();
+            throw new Error(result.message || result.error || 'Failed to delete account');
         }
 
         showToast('Account deleted successfully', 'success');
@@ -149,6 +182,117 @@ async function deleteAccount(id) {
         fetchAccounts();
     } catch (error) {
         console.error('Error deleting account:', error);
+        showToast(error.message, 'error');
+    } finally {
+        setButtonLoading(confirmDeleteBtn, false, 'Delete Account');
+    }
+}
+
+/**
+ * Deposit money into an account.
+ */
+async function depositMoney(accountId, amount) {
+    setButtonLoading(txnSubmitBtn, true, 'Processing...');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/${accountId}/deposit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: parseFloat(amount) }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.message || 'Deposit failed');
+        }
+
+        const data = result.data || result;
+        showToast(`₹${formatBalance(amount)} deposited successfully. New balance: ₹${formatBalance(data.balance)}`, 'success');
+        closeTxnModal();
+        fetchAccounts();
+    } catch (error) {
+        console.error('Error depositing:', error);
+        showToast(error.message, 'error');
+    } finally {
+        setButtonLoading(txnSubmitBtn, false, txnBtnText.dataset.originalText || 'Confirm');
+    }
+}
+
+/**
+ * Withdraw money from an account.
+ */
+async function withdrawMoney(accountId, amount) {
+    setButtonLoading(txnSubmitBtn, true, 'Processing...');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/${accountId}/withdraw`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: parseFloat(amount) }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.message || 'Withdrawal failed');
+        }
+
+        const data = result.data || result;
+        showToast(`₹${formatBalance(amount)} withdrawn successfully. New balance: ₹${formatBalance(data.balance)}`, 'success');
+        closeTxnModal();
+        fetchAccounts();
+    } catch (error) {
+        console.error('Error withdrawing:', error);
+        showToast(error.message, 'error');
+    } finally {
+        setButtonLoading(txnSubmitBtn, false, txnBtnText.dataset.originalText || 'Confirm');
+    }
+}
+
+/**
+ * Fetch transaction history for an account.
+ */
+async function fetchTransactions(accountId) {
+    historyLoading.style.display = 'flex';
+    historyTableWrapper.style.display = 'none';
+    historyEmpty.style.display = 'none';
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/${accountId}/transactions`);
+
+        if (!response.ok) throw new Error('Failed to fetch transactions');
+
+        const result = await response.json();
+        const transactions = result.data || result;
+
+        if (transactions.length === 0) {
+            historyLoading.style.display = 'none';
+            historyEmpty.style.display = 'block';
+            return;
+        }
+
+        historyTbody.innerHTML = transactions.map(txn => `
+            <tr>
+                <td>#${txn.id}</td>
+                <td>${formatDateTime(txn.timestamp)}</td>
+                <td>
+                    <span class="badge ${txn.type === 'DEPOSIT' ? 'badge-deposit' : 'badge-withdraw'}">
+                        ${txn.type === 'DEPOSIT' ? '↑' : '↓'} ${txn.type}
+                    </span>
+                </td>
+                <td class="${txn.type === 'DEPOSIT' ? 'amount-deposit' : 'amount-withdraw'}">
+                    ${txn.type === 'DEPOSIT' ? '+' : '-'}₹${formatBalance(txn.amount)}
+                </td>
+                <td class="balance-cell">₹${formatBalance(txn.balanceAfterTransaction)}</td>
+            </tr>
+        `).join('');
+
+        historyLoading.style.display = 'none';
+        historyTableWrapper.style.display = 'block';
+    } catch (error) {
+        console.error('Error fetching transactions:', error);
+        historyLoading.style.display = 'none';
         showToast(error.message, 'error');
     }
 }
@@ -161,7 +305,7 @@ async function deleteAccount(id) {
  * Render the accounts table.
  */
 function renderAccounts(accounts) {
-    const tableWrapper = document.querySelector('.table-wrapper');
+    const tableWrapper = document.querySelector('#dashboard-section .table-wrapper');
 
     if (accounts.length === 0) {
         tableWrapper.style.display = 'none';
@@ -182,15 +326,25 @@ function renderAccounts(accounts) {
                     ${account.accountType}
                 </span>
             </td>
-            <td class="balance-cell">₹${formatBalance(account.balance)}</td>
-            <td>${account.email || '—'}</td>
+            <td class="balance-cell ${parseFloat(account.balance) < 0 ? 'balance-negative' : ''}">₹${formatBalance(account.balance)}</td>
             <td>
                 <div class="actions-cell">
+                    <button class="btn-action btn-deposit" title="Deposit" onclick="openTxnModal(${account.id}, 'deposit')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        <span>Deposit</span>
+                    </button>
+                    <button class="btn-action btn-withdraw" title="Withdraw" onclick="openTxnModal(${account.id}, 'withdraw')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        <span>Withdraw</span>
+                    </button>
+                    <button class="btn-action btn-history" title="History" onclick="openHistoryModal(${account.id})">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    </button>
                     <button class="btn-icon edit" title="Edit" onclick="openEditModal(${account.id})">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     </button>
                     <button class="btn-icon delete" title="Delete" onclick="openDeleteModal(${account.id})">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                     </button>
                 </div>
             </td>
@@ -220,12 +374,21 @@ function updateStats(accounts) {
 // Create account form submission
 accountForm.addEventListener('submit', (e) => {
     e.preventDefault();
+
+    const name = document.getElementById('accountHolderName').value.trim();
+    const type = document.getElementById('accountType').value;
+    const balance = document.getElementById('balance').value;
+
+    if (!name) { showToast('Account holder name is required', 'error'); return; }
+    if (!type) { showToast('Please select an account type', 'error'); return; }
+    if (!balance || parseFloat(balance) < 0) { showToast('Please enter a valid balance', 'error'); return; }
+
     const formData = {
-        accountHolderName: document.getElementById('accountHolderName').value.trim(),
+        accountHolderName: name,
         email: document.getElementById('email').value.trim() || null,
         phoneNumber: document.getElementById('phoneNumber').value.trim() || null,
-        accountType: document.getElementById('accountType').value,
-        balance: parseFloat(document.getElementById('balance').value),
+        accountType: type,
+        balance: parseFloat(balance),
     };
     createAccount(formData);
 });
@@ -244,6 +407,25 @@ editForm.addEventListener('submit', (e) => {
     updateAccount(id, formData);
 });
 
+// Transaction form submission
+txnForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const accountId = document.getElementById('txn-account-id').value;
+    const type = document.getElementById('txn-type').value;
+    const amount = document.getElementById('txn-amount').value;
+
+    if (!amount || parseFloat(amount) <= 0) {
+        showToast('Please enter a valid amount greater than zero', 'error');
+        return;
+    }
+
+    if (type === 'deposit') {
+        depositMoney(accountId, amount);
+    } else {
+        withdrawMoney(accountId, amount);
+    }
+});
+
 // Search / filter accounts
 searchInput.addEventListener('input', (e) => {
     const query = e.target.value.toLowerCase();
@@ -258,24 +440,111 @@ searchInput.addEventListener('input', (e) => {
 
 // Refresh button
 refreshBtn.addEventListener('click', () => {
-    refreshBtn.disabled = true;
-    refreshBtn.innerHTML = '<div class="spinner"></div> Loading...';
+    setButtonLoading(refreshBtn, true, 'Loading...');
     fetchAccounts().finally(() => {
         setTimeout(() => {
-            refreshBtn.disabled = false;
-            refreshBtn.innerHTML = `
+            setButtonLoading(refreshBtn, false, `
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="23 4 23 10 17 10"></polyline>
                     <polyline points="1 20 1 14 7 14"></polyline>
                     <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
                 </svg>
-                Refresh`;
+                Refresh`);
         }, 400);
     });
 });
 
 // =============================================
-// Modal Helpers
+// Transaction Modal Helpers
+// =============================================
+
+function openTxnModal(id, type) {
+    const account = allAccounts.find(a => a.id === id);
+    if (!account) return;
+
+    document.getElementById('txn-account-id').value = id;
+    document.getElementById('txn-type').value = type;
+    document.getElementById('txn-amount').value = '';
+
+    const isDeposit = type === 'deposit';
+    txnModalTitle.textContent = isDeposit ? 'Deposit Money' : 'Withdraw Money';
+
+    const btnText = isDeposit ? 'Confirm Deposit' : 'Confirm Withdrawal';
+    txnBtnText.textContent = btnText;
+    txnBtnText.dataset.originalText = btnText;
+
+    txnSubmitBtn.className = `btn ${isDeposit ? 'btn-success' : 'btn-warning'}`;
+
+    txnAccountInfo.innerHTML = `
+        <div class="txn-info-row">
+            <span class="txn-info-label">Account</span>
+            <span class="txn-info-value">${escapeHtml(account.accountHolderName)}</span>
+        </div>
+        <div class="txn-info-row">
+            <span class="txn-info-label">Account No.</span>
+            <span class="txn-info-value account-number">${account.accountNumber}</span>
+        </div>
+        <div class="txn-info-row">
+            <span class="txn-info-label">Current Balance</span>
+            <span class="txn-info-value balance-cell">₹${formatBalance(account.balance)}</span>
+        </div>
+        <div class="txn-info-row">
+            <span class="txn-info-label">Type</span>
+            <span class="txn-info-value">
+                <span class="badge ${account.accountType === 'SAVINGS' ? 'badge-savings' : 'badge-current'}">${account.accountType}</span>
+            </span>
+        </div>
+    `;
+
+    txnModalOverlay.classList.add('active');
+    document.getElementById('txn-amount').focus();
+}
+
+function closeTxnModal() {
+    txnModalOverlay.classList.remove('active');
+    txnForm.reset();
+}
+
+txnModalClose.addEventListener('click', closeTxnModal);
+txnModalOverlay.addEventListener('click', (e) => {
+    if (e.target === txnModalOverlay) closeTxnModal();
+});
+
+// =============================================
+// History Modal Helpers
+// =============================================
+
+function openHistoryModal(id) {
+    const account = allAccounts.find(a => a.id === id);
+    if (!account) return;
+
+    historyTitle.textContent = `Transaction History`;
+    historyAccountInfo.innerHTML = `
+        <div class="txn-info-row">
+            <span class="txn-info-label">Account</span>
+            <span class="txn-info-value">${escapeHtml(account.accountHolderName)} — ${account.accountNumber}</span>
+        </div>
+        <div class="txn-info-row">
+            <span class="txn-info-label">Balance</span>
+            <span class="txn-info-value balance-cell">₹${formatBalance(account.balance)}</span>
+        </div>
+    `;
+
+    historyOverlay.classList.add('active');
+    fetchTransactions(id);
+}
+
+function closeHistoryModal() {
+    historyOverlay.classList.remove('active');
+}
+
+historyClose.addEventListener('click', closeHistoryModal);
+historyOverlay.addEventListener('click', (e) => {
+    if (e.target === historyOverlay) closeHistoryModal();
+});
+
+// =============================================
+// Edit / Delete Modal Helpers
 // =============================================
 
 function openEditModal(id) {
@@ -347,6 +616,20 @@ function formatBalance(amount) {
     });
 }
 
+function formatDateTime(isoString) {
+    const date = new Date(isoString);
+    return date.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    }) + ', ' + date.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+    });
+}
+
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -361,12 +644,30 @@ function animateNumber(element, target) {
     function update(currentTime) {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+        const eased = 1 - Math.pow(1 - progress, 3);
         element.textContent = Math.round(start + (target - start) * eased);
         if (progress < 1) requestAnimationFrame(update);
     }
 
     requestAnimationFrame(update);
+}
+
+/**
+ * Set a button to loading state or restore it.
+ * @param {HTMLElement} button
+ * @param {boolean} isLoading
+ * @param {string} text
+ */
+function setButtonLoading(button, isLoading, text) {
+    if (isLoading) {
+        button.disabled = true;
+        button.classList.add('btn-loading');
+        button.innerHTML = `<div class="spinner"></div> ${text}`;
+    } else {
+        button.disabled = false;
+        button.classList.remove('btn-loading');
+        button.innerHTML = text;
+    }
 }
 
 /**
@@ -387,7 +688,6 @@ function showToast(message, type = 'info') {
     toast.innerHTML = `${icons[type] || icons.info}<span>${message}</span>`;
     toastContainer.appendChild(toast);
 
-    // Auto-remove after 4 seconds
     setTimeout(() => {
         toast.classList.add('toast-out');
         toast.addEventListener('animationend', () => toast.remove());
@@ -402,6 +702,8 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeModal();
         closeDeleteModal();
+        closeTxnModal();
+        closeHistoryModal();
     }
 });
 

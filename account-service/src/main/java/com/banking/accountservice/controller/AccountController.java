@@ -1,9 +1,8 @@
 package com.banking.accountservice.controller;
 
-import com.banking.accountservice.dto.AccountCreateRequest;
-import com.banking.accountservice.dto.AccountDTO;
-import com.banking.accountservice.dto.AccountUpdateRequest;
+import com.banking.accountservice.dto.*;
 import com.banking.accountservice.service.AccountService;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -11,18 +10,20 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 /**
- * REST Controller for Account operations.
+ * REST Controller for Account and Transaction operations.
  * Thin layer — delegates all business logic to AccountService.
  *
  * Endpoints:
- *   POST   /api/accounts       → Create account
- *   GET    /api/accounts       → List all accounts
- *   GET    /api/accounts/{id}  → Get by ID
- *   PUT    /api/accounts/{id}  → Update account
- *   DELETE /api/accounts/{id}  → Delete account
+ *   POST   /api/accounts               → Create account
+ *   GET    /api/accounts               → List all accounts
+ *   GET    /api/accounts/{id}          → Get by ID
+ *   PUT    /api/accounts/{id}          → Update account
+ *   DELETE /api/accounts/{id}          → Delete account
+ *   POST   /api/accounts/{id}/deposit  → Deposit money
+ *   POST   /api/accounts/{id}/withdraw → Withdraw money
+ *   GET    /api/accounts/{id}/transactions → Transaction history
  */
 @RestController
 @RequestMapping("/api/accounts")
@@ -37,40 +38,78 @@ public class AccountController {
         this.accountService = accountService;
     }
 
+    // =============================================
+    // CRUD Endpoints
+    // =============================================
+
     @PostMapping
-    public ResponseEntity<AccountDTO> createAccount(@RequestBody AccountCreateRequest request) {
+    public ResponseEntity<ApiResponse<AccountDTO>> createAccount(@RequestBody AccountCreateRequest request) {
         log.info("POST /api/accounts — Creating account for: {}", request.getAccountHolderName());
         AccountDTO created = accountService.createAccount(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.created("Account created successfully", created));
     }
 
     @GetMapping
-    public ResponseEntity<List<AccountDTO>> getAllAccounts() {
+    public ResponseEntity<ApiResponse<List<AccountDTO>>> getAllAccounts() {
         log.debug("GET /api/accounts — Fetching all accounts");
         List<AccountDTO> accounts = accountService.getAllAccounts();
-        return ResponseEntity.ok(accounts);
+        return ResponseEntity.ok(ApiResponse.success("Accounts retrieved successfully", accounts));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AccountDTO> getAccountById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<AccountDTO>> getAccountById(@PathVariable Long id) {
         log.debug("GET /api/accounts/{} — Fetching account", id);
         AccountDTO account = accountService.getAccountById(id);
-        return ResponseEntity.ok(account);
+        return ResponseEntity.ok(ApiResponse.success("Account retrieved successfully", account));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<AccountDTO> updateAccount(
+    public ResponseEntity<ApiResponse<AccountDTO>> updateAccount(
             @PathVariable Long id,
             @RequestBody AccountUpdateRequest request) {
         log.info("PUT /api/accounts/{} — Updating account", id);
         AccountDTO updated = accountService.updateAccount(id, request);
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(ApiResponse.success("Account updated successfully", updated));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deleteAccount(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteAccount(@PathVariable Long id) {
         log.info("DELETE /api/accounts/{} — Deleting account", id);
         accountService.deleteAccount(id);
-        return ResponseEntity.ok(Map.of("message", "Account deleted successfully", "id", id));
+        return ResponseEntity.ok(ApiResponse.success("Account deleted successfully", null));
+    }
+
+    // =============================================
+    // Banking Endpoints (Deposit / Withdraw)
+    // =============================================
+
+    @PostMapping("/{id}/deposit")
+    public ResponseEntity<ApiResponse<AccountDTO>> deposit(
+            @PathVariable Long id,
+            @Valid @RequestBody AmountRequest request) {
+        log.info("POST /api/accounts/{}/deposit — Depositing ₹{}", id, request.getAmount());
+        AccountDTO updated = accountService.deposit(id, request.getAmount());
+        return ResponseEntity.ok(ApiResponse.success("Deposit successful", updated));
+    }
+
+    @PostMapping("/{id}/withdraw")
+    public ResponseEntity<ApiResponse<AccountDTO>> withdraw(
+            @PathVariable Long id,
+            @Valid @RequestBody AmountRequest request) {
+        log.info("POST /api/accounts/{}/withdraw — Withdrawing ₹{}", id, request.getAmount());
+        AccountDTO updated = accountService.withdraw(id, request.getAmount());
+        return ResponseEntity.ok(ApiResponse.success("Withdrawal successful", updated));
+    }
+
+    // =============================================
+    // Transaction History
+    // =============================================
+
+    @GetMapping("/{id}/transactions")
+    public ResponseEntity<ApiResponse<List<TransactionDTO>>> getTransactions(@PathVariable Long id) {
+        log.debug("GET /api/accounts/{}/transactions — Fetching history", id);
+        List<TransactionDTO> transactions = accountService.getTransactions(id);
+        return ResponseEntity.ok(ApiResponse.success("Transactions retrieved successfully", transactions));
     }
 }

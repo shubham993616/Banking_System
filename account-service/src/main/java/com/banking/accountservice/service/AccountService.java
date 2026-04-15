@@ -3,7 +3,9 @@ package com.banking.accountservice.service;
 import com.banking.accountservice.dto.AccountCreateRequest;
 import com.banking.accountservice.dto.AccountDTO;
 import com.banking.accountservice.dto.AccountUpdateRequest;
+import com.banking.accountservice.dto.TransactionDTO;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -29,4 +31,13 @@ public interface AccountService {
 
     /** Delete an account by its ID. */
     void deleteAccount(Long id);
+
+    /** Deposit money into an account. */
+    AccountDTO deposit(Long accountId, BigDecimal amount);
+
+    /** Withdraw money from an account. */
+    AccountDTO withdraw(Long accountId, BigDecimal amount);
+
+    /** Get all transactions for an account, sorted by latest first. */
+    List<TransactionDTO> getTransactions(Long accountId);
 }
