@@ -1,0 +1,14 @@
+# Database files
+*.db
+*.mv.db
+
+# Build files
+target/
+*.class
+*.jar
+
+# Logs
+*.log
+
+# Node
+node_modules/
