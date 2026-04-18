@@ -1,5 +1,8 @@
 package com.banking.accountservice.dto;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 /**
@@ -8,8 +11,14 @@ import java.math.BigDecimal;
  */
 public class AccountCreateRequest {
 
+    @NotBlank(message = "Account holder name is required")
     private String accountHolderName;
+
+    @NotBlank(message = "Account type is required")
     private String accountType;
+
+    @NotNull(message = "Initial balance is required")
+    @DecimalMin(value = "0.00", inclusive = true, message = "Initial balance cannot be negative")
     private BigDecimal balance;
     private String email;
     private String phoneNumber;

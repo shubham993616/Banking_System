@@ -1,15 +1,19 @@
 package com.banking.accountservice.exception;
 
 import com.banking.accountservice.dto.ApiResponse;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -63,15 +67,26 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Void>> handleValidation(
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidation(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
-        String errors = ex.getBindingResult().getFieldErrors().stream()
-                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+        Map<String, String> errors = new LinkedHashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(fe -> errors.put(fe.getField(), fe.getDefaultMessage()));
+        String errorSummary = errors.entrySet().stream()
+                .map(e -> e.getKey() + ": " + e.getValue())
                 .collect(Collectors.joining(", "));
-        log.warn("Validation failed: {}", errors);
+        log.warn("Validation failed: {}", errorSummary);
         return new ResponseEntity<>(
-                ApiResponse.error(400, errors),
+                new ApiResponse<>(400, "Validation failed", errors),
                 HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @ExceptionHandler({ObjectOptimisticLockingFailureException.class, OptimisticLockException.class})
+    public ResponseEntity<ApiResponse<Void>> handleOptimisticLocking(Exception ex, HttpServletRequest request) {
+        log.warn("Concurrent update conflict at {}: {}", request.getRequestURI(), ex.getMessage());
+        return new ResponseEntity<>(
+                ApiResponse.error(409, "Concurrent update detected. Please retry."),
+                HttpStatus.CONFLICT
         );
     }
 

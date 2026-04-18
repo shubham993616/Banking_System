@@ -19,5 +19,6 @@ C:\Users\shubh\Desktop\Banking_System\account-service\src\main\java\com\banking\
 C:\Users\shubh\Desktop\Banking_System\account-service\src\main\java\com\banking\accountservice\dto\AccountDTO.java
 C:\Users\shubh\Desktop\Banking_System\account-service\src\main\java\com\banking\accountservice\dto\AccountMapper.java
 C:\Users\shubh\Desktop\Banking_System\account-service\src\main\java\com\banking\accountservice\entity\Account.java
+C:\Users\shubh\Desktop\Banking_System\account-service\src\main\java\com\banking\accountservice\dto\PagedResponse.java
 C:\Users\shubh\Desktop\Banking_System\account-service\src\main\java\com\banking\accountservice\entity\AccountType.java
 C:\Users\shubh\Desktop\Banking_System\account-service\src\main\java\com\banking\accountservice\dto\AccountCreateRequest.java

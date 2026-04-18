@@ -43,6 +43,11 @@ const historyTableWrapper = document.getElementById('history-table-wrapper');
 const historyTbody = document.getElementById('history-tbody');
 const historyLoading = document.getElementById('history-loading');
 const historyEmpty = document.getElementById('history-empty');
+const historyPagination = document.getElementById('history-pagination');
+const historyPrevBtn = document.getElementById('history-prev-btn');
+const historyNextBtn = document.getElementById('history-next-btn');
+const historyPageInfo = document.getElementById('history-page-info');
+const globalLoading = document.getElementById('global-loading');
 
 // Stats
 const totalAccountsEl = document.getElementById('total-accounts');
@@ -53,6 +58,8 @@ const currentCountEl = document.getElementById('current-count');
 // All accounts data (cached for search/filter)
 let allAccounts = [];
 let deleteTargetId = null;
+let activeRequestCount = 0;
+let historyState = { accountId: null, page: 0, totalPages: 0 };
 
 // =============================================
 // Navigation
@@ -83,9 +90,7 @@ function switchSection(sectionName) {
  */
 async function fetchAccounts() {
     try {
-        const response = await fetch(API_BASE_URL);
-        if (!response.ok) throw new Error('Failed to fetch accounts');
-        const result = await response.json();
+        const result = await apiRequest(API_BASE_URL);
         allAccounts = result.data || result; // Support both ApiResponse and raw array
         renderAccounts(allAccounts);
         updateStats(allAccounts);
@@ -103,18 +108,11 @@ async function createAccount(accountData) {
     setButtonLoading(submitBtn, true, 'Creating...');
 
     try {
-        const response = await fetch(API_BASE_URL, {
+        const result = await apiRequest(API_BASE_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(accountData),
         });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.message || result.error || 'Failed to create account');
-        }
-
         const data = result.data || result;
         showToast(`Account created successfully for ${data.accountHolderName}`, 'success');
         resetForm();
@@ -138,17 +136,11 @@ async function updateAccount(id, accountData) {
     setButtonLoading(submitBtn, true, 'Saving...');
 
     try {
-        const response = await fetch(`${API_BASE_URL}/${id}`, {
+        await apiRequest(`${API_BASE_URL}/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(accountData),
         });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.message || result.error || 'Failed to update account');
-        }
 
         showToast('Account updated successfully', 'success');
         closeModal();
@@ -168,14 +160,9 @@ async function deleteAccount(id) {
     setButtonLoading(confirmDeleteBtn, true, 'Deleting...');
 
     try {
-        const response = await fetch(`${API_BASE_URL}/${id}`, {
+        await apiRequest(`${API_BASE_URL}/${id}`, {
             method: 'DELETE',
         });
-
-        if (!response.ok) {
-            const result = await response.json();
-            throw new Error(result.message || result.error || 'Failed to delete account');
-        }
 
         showToast('Account deleted successfully', 'success');
         closeDeleteModal();
@@ -195,17 +182,11 @@ async function depositMoney(accountId, amount) {
     setButtonLoading(txnSubmitBtn, true, 'Processing...');
 
     try {
-        const response = await fetch(`${API_BASE_URL}/${accountId}/deposit`, {
+        const result = await apiRequest(`${API_BASE_URL}/${accountId}/deposit`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ amount: parseFloat(amount) }),
         });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.message || 'Deposit failed');
-        }
 
         const data = result.data || result;
         showToast(`₹${formatBalance(amount)} deposited successfully. New balance: ₹${formatBalance(data.balance)}`, 'success');
@@ -226,17 +207,11 @@ async function withdrawMoney(accountId, amount) {
     setButtonLoading(txnSubmitBtn, true, 'Processing...');
 
     try {
-        const response = await fetch(`${API_BASE_URL}/${accountId}/withdraw`, {
+        const result = await apiRequest(`${API_BASE_URL}/${accountId}/withdraw`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ amount: parseFloat(amount) }),
         });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.message || 'Withdrawal failed');
-        }
 
         const data = result.data || result;
         showToast(`₹${formatBalance(amount)} withdrawn successfully. New balance: ₹${formatBalance(data.balance)}`, 'success');
@@ -253,22 +228,26 @@ async function withdrawMoney(accountId, amount) {
 /**
  * Fetch transaction history for an account.
  */
-async function fetchTransactions(accountId) {
+async function fetchTransactions(accountId, page = 0) {
+    historyState.accountId = accountId;
+    historyState.page = page;
     historyLoading.style.display = 'flex';
     historyTableWrapper.style.display = 'none';
     historyEmpty.style.display = 'none';
+    historyPagination.style.display = 'none';
 
     try {
-        const response = await fetch(`${API_BASE_URL}/${accountId}/transactions`);
-
-        if (!response.ok) throw new Error('Failed to fetch transactions');
-
-        const result = await response.json();
-        const transactions = result.data || result;
+        const result = await apiRequest(`${API_BASE_URL}/${accountId}/transactions?page=${page}&size=10`);
+        const payload = result.data || result;
+        const transactions = payload.content || [];
+        historyState.totalPages = payload.totalPages || 0;
 
         if (transactions.length === 0) {
             historyLoading.style.display = 'none';
             historyEmpty.style.display = 'block';
+            historyPageInfo.textContent = 'Page 0 of 0';
+            historyPrevBtn.disabled = true;
+            historyNextBtn.disabled = true;
             return;
         }
 
@@ -290,6 +269,10 @@ async function fetchTransactions(accountId) {
 
         historyLoading.style.display = 'none';
         historyTableWrapper.style.display = 'block';
+        historyPagination.style.display = 'flex';
+        historyPageInfo.textContent = `Page ${payload.page + 1} of ${payload.totalPages}`;
+        historyPrevBtn.disabled = payload.page <= 0;
+        historyNextBtn.disabled = payload.page >= payload.totalPages - 1;
     } catch (error) {
         console.error('Error fetching transactions:', error);
         historyLoading.style.display = 'none';
@@ -531,16 +514,29 @@ function openHistoryModal(id) {
     `;
 
     historyOverlay.classList.add('active');
-    fetchTransactions(id);
+    fetchTransactions(id, 0);
 }
 
 function closeHistoryModal() {
     historyOverlay.classList.remove('active');
+    historyState = { accountId: null, page: 0, totalPages: 0 };
 }
 
 historyClose.addEventListener('click', closeHistoryModal);
 historyOverlay.addEventListener('click', (e) => {
     if (e.target === historyOverlay) closeHistoryModal();
+});
+
+historyPrevBtn.addEventListener('click', () => {
+    if (historyState.accountId !== null && historyState.page > 0) {
+        fetchTransactions(historyState.accountId, historyState.page - 1);
+    }
+});
+
+historyNextBtn.addEventListener('click', () => {
+    if (historyState.accountId !== null && historyState.page < historyState.totalPages - 1) {
+        fetchTransactions(historyState.accountId, historyState.page + 1);
+    }
 });
 
 // =============================================
@@ -667,6 +663,30 @@ function setButtonLoading(button, isLoading, text) {
         button.disabled = false;
         button.classList.remove('btn-loading');
         button.innerHTML = text;
+    }
+}
+
+function setGlobalLoading(isLoading) {
+    if (isLoading) {
+        activeRequestCount += 1;
+    } else {
+        activeRequestCount = Math.max(0, activeRequestCount - 1);
+    }
+    globalLoading.style.display = activeRequestCount > 0 ? 'flex' : 'none';
+}
+
+async function apiRequest(url, options = {}) {
+    setGlobalLoading(true);
+    try {
+        const response = await fetch(url, options);
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            const message = result.message || result.error || 'Request failed';
+            throw new Error(message);
+        }
+        return result;
+    } finally {
+        setGlobalLoading(false);
     }
 }
 

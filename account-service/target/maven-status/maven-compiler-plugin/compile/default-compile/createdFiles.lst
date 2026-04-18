@@ -2,6 +2,7 @@ com\banking\accountservice\exception\ErrorResponse.class
 com\banking\accountservice\dto\AccountMapper.class
 com\banking\accountservice\entity\TransactionType.class
 com\banking\accountservice\dto\AccountDTO.class
+com\banking\accountservice\dto\PagedResponse.class
 com\banking\accountservice\controller\AccountController.class
 com\banking\accountservice\exception\DuplicateResourceException.class
 com\banking\accountservice\repository\TransactionRepository.class

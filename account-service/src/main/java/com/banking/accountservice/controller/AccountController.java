@@ -5,10 +5,8 @@ import com.banking.accountservice.service.AccountService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 /**
@@ -43,11 +41,10 @@ public class AccountController {
     // =============================================
 
     @PostMapping
-    public ResponseEntity<ApiResponse<AccountDTO>> createAccount(@RequestBody AccountCreateRequest request) {
+    public ResponseEntity<ApiResponse<AccountDTO>> createAccount(@Valid @RequestBody AccountCreateRequest request) {
         log.info("POST /api/accounts — Creating account for: {}", request.getAccountHolderName());
         AccountDTO created = accountService.createAccount(request);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.created("Account created successfully", created));
+        return ResponseEntity.ok(ApiResponse.success("Account created successfully", created));
     }
 
     @GetMapping
@@ -67,7 +64,7 @@ public class AccountController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<AccountDTO>> updateAccount(
             @PathVariable Long id,
-            @RequestBody AccountUpdateRequest request) {
+            @Valid @RequestBody AccountUpdateRequest request) {
         log.info("PUT /api/accounts/{} — Updating account", id);
         AccountDTO updated = accountService.updateAccount(id, request);
         return ResponseEntity.ok(ApiResponse.success("Account updated successfully", updated));
@@ -107,9 +104,12 @@ public class AccountController {
     // =============================================
 
     @GetMapping("/{id}/transactions")
-    public ResponseEntity<ApiResponse<List<TransactionDTO>>> getTransactions(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<PagedResponse<TransactionDTO>>> getTransactions(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         log.debug("GET /api/accounts/{}/transactions — Fetching history", id);
-        List<TransactionDTO> transactions = accountService.getTransactions(id);
+        PagedResponse<TransactionDTO> transactions = accountService.getTransactions(id, page, size);
         return ResponseEntity.ok(ApiResponse.success("Transactions retrieved successfully", transactions));
     }
 }

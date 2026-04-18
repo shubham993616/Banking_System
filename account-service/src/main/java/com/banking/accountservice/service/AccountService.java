@@ -2,6 +2,7 @@ package com.banking.accountservice.service;
 
 import com.banking.accountservice.dto.AccountCreateRequest;
 import com.banking.accountservice.dto.AccountDTO;
+import com.banking.accountservice.dto.PagedResponse;
 import com.banking.accountservice.dto.AccountUpdateRequest;
 import com.banking.accountservice.dto.TransactionDTO;
 
@@ -38,6 +39,6 @@ public interface AccountService {
     /** Withdraw money from an account. */
     AccountDTO withdraw(Long accountId, BigDecimal amount);
 
-    /** Get all transactions for an account, sorted by latest first. */
-    List<TransactionDTO> getTransactions(Long accountId);
+    /** Get paged transactions for an account, sorted by latest first. */
+    PagedResponse<TransactionDTO> getTransactions(Long accountId, int page, int size);
 }

@@ -661,6 +661,19 @@ td:first-child {
     font-size: 0.9rem;
 }
 
+.history-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 1rem 0;
+}
+
+#history-page-info {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
 /* --- Empty State --- */
 .empty-state {
     text-align: center;
@@ -841,6 +854,19 @@ td:first-child {
     flex-direction: column;
     gap: 10px;
     max-width: 420px;
+}
+
+.global-loading {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 14, 26, 0.45);
+    backdrop-filter: blur(2px);
+    z-index: 400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--text-primary);
 }
 
 .toast {

@@ -11,6 +11,9 @@ import com.banking.accountservice.exception.ResourceNotFoundException;
 import com.banking.accountservice.repository.AccountRepository;
 import com.banking.accountservice.repository.TransactionRepository;
 import com.banking.accountservice.service.AccountService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -106,15 +109,19 @@ public class AccountServiceImpl implements AccountService {
         return AccountMapper.toDTO(updated);
     }
 
-    @Override
-    public void deleteAccount(Long id) {
-        log.info("Deleting account with ID: {}", id);
-        if (!accountRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Account", "id", id);
-        }
-        accountRepository.deleteById(id);
-        log.info("Account deleted successfully: ID {}", id);
-    }
+   @Override
+public void deleteAccount(Long id) {
+    log.info("Deleting account with ID: {}", id);
+
+    Account account = findAccountOrThrow(id);
+
+    // 🔥 delete transactions first
+    transactionRepository.deleteByAccountId(id);
+
+    accountRepository.delete(account);
+
+    log.info("Account deleted successfully: ID {}", id);
+}
 
     // =============================================
     // Banking Operations (Deposit / Withdraw)
@@ -123,73 +130,66 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional
     public AccountDTO deposit(Long accountId, BigDecimal amount) {
-        log.info("Depositing ₹{} into account ID: {}", amount, accountId);
+        log.info("Deposit: accountId={}, amount={}", accountId, amount);
+        try {
+            validatePositiveAmount(amount);
 
-        validatePositiveAmount(amount);
+            Account account = findAccountOrThrow(accountId);
 
-        Account account = findAccountOrThrow(accountId);
+            BigDecimal newBalance = account.getBalance().add(amount);
+            account.setBalance(newBalance);
+            Account savedAccount = accountRepository.save(account);
 
-        // Add amount to balance
-        BigDecimal newBalance = account.getBalance().add(amount);
-        account.setBalance(newBalance);
-        Account savedAccount = accountRepository.save(account);
-
-        // Record the transaction
-        Transaction transaction = new Transaction(
-                savedAccount, TransactionType.DEPOSIT, amount, newBalance
-        );
-        transactionRepository.save(transaction);
-
-        log.info("Deposit successful. Account {} new balance: ₹{}",
-                savedAccount.getAccountNumber(), newBalance);
-
-        return AccountMapper.toDTO(savedAccount);
+            Transaction transaction = new Transaction(
+                    savedAccount, TransactionType.DEPOSIT, amount, newBalance
+            );
+            transactionRepository.save(transaction);
+            return AccountMapper.toDTO(savedAccount);
+        } catch (RuntimeException ex) {
+            log.error("Transaction failed for account {}", accountId, ex);
+            throw ex;
+        }
     }
 
     @Override
     @Transactional
     public AccountDTO withdraw(Long accountId, BigDecimal amount) {
-        log.info("Withdrawing ₹{} from account ID: {}", amount, accountId);
+        log.info("Withdraw: accountId={}, amount={}", accountId, amount);
+        try {
+            validatePositiveAmount(amount);
+            Account account = findAccountOrThrow(accountId);
+            BigDecimal newBalance = account.getBalance().subtract(amount);
 
-        validatePositiveAmount(amount);
-
-        Account account = findAccountOrThrow(accountId);
-
-        BigDecimal newBalance = account.getBalance().subtract(amount);
-
-        // Enforce business rules based on account type
-        if (account.getAccountType() == AccountType.SAVINGS) {
-            if (newBalance.compareTo(SAVINGS_MIN_BALANCE) < 0) {
-                throw new InsufficientBalanceException(
-                        "SAVINGS",
-                        "Minimum balance of ₹1,000 must be maintained. " +
-                        "Available for withdrawal: ₹" + account.getBalance().subtract(SAVINGS_MIN_BALANCE)
-                );
+            if (account.getAccountType() == AccountType.SAVINGS) {
+                if (newBalance.compareTo(SAVINGS_MIN_BALANCE) < 0) {
+                    throw new InsufficientBalanceException(
+                            "SAVINGS",
+                            "Minimum balance of ₹1,000 must be maintained. " +
+                                    "Available for withdrawal: ₹" + account.getBalance().subtract(SAVINGS_MIN_BALANCE)
+                    );
+                }
+            } else if (account.getAccountType() == AccountType.CURRENT) {
+                if (newBalance.compareTo(CURRENT_OVERDRAFT_LIMIT) < 0) {
+                    throw new InsufficientBalanceException(
+                            "CURRENT",
+                            "Overdraft limit of -₹5,000 reached. " +
+                                    "Available for withdrawal: ₹" + account.getBalance().subtract(CURRENT_OVERDRAFT_LIMIT)
+                    );
+                }
             }
-        } else if (account.getAccountType() == AccountType.CURRENT) {
-            if (newBalance.compareTo(CURRENT_OVERDRAFT_LIMIT) < 0) {
-                throw new InsufficientBalanceException(
-                        "CURRENT",
-                        "Overdraft limit of -₹5,000 reached. " +
-                        "Available for withdrawal: ₹" + account.getBalance().subtract(CURRENT_OVERDRAFT_LIMIT)
-                );
-            }
+
+            account.setBalance(newBalance);
+            Account savedAccount = accountRepository.save(account);
+
+            Transaction transaction = new Transaction(
+                    savedAccount, TransactionType.WITHDRAW, amount, newBalance
+            );
+            transactionRepository.save(transaction);
+            return AccountMapper.toDTO(savedAccount);
+        } catch (RuntimeException ex) {
+            log.error("Transaction failed for account {}", accountId, ex);
+            throw ex;
         }
-
-        // Deduct amount from balance
-        account.setBalance(newBalance);
-        Account savedAccount = accountRepository.save(account);
-
-        // Record the transaction
-        Transaction transaction = new Transaction(
-                savedAccount, TransactionType.WITHDRAW, amount, newBalance
-        );
-        transactionRepository.save(transaction);
-
-        log.info("Withdrawal successful. Account {} new balance: ₹{}",
-                savedAccount.getAccountNumber(), newBalance);
-
-        return AccountMapper.toDTO(savedAccount);
     }
 
     // =============================================
@@ -198,16 +198,25 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TransactionDTO> getTransactions(Long accountId) {
+    public PagedResponse<TransactionDTO> getTransactions(Long accountId, int page, int size) {
         log.debug("Fetching transactions for account ID: {}", accountId);
 
-        // Verify account exists
         findAccountOrThrow(accountId);
 
-        return transactionRepository.findByAccountIdOrderByTimestampDesc(accountId)
-                .stream()
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp"));
+        Page<Transaction> transactionPage = transactionRepository.findByAccountId(accountId, pageable);
+
+        List<TransactionDTO> content = transactionPage.getContent().stream()
                 .map(TransactionMapper::toDTO)
                 .collect(Collectors.toList());
+
+        return new PagedResponse<>(
+                content,
+                transactionPage.getNumber(),
+                transactionPage.getSize(),
+                transactionPage.getTotalElements(),
+                transactionPage.getTotalPages()
+        );
     }
 
     // =============================================

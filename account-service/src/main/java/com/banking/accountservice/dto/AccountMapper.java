@@ -37,7 +37,7 @@ public class AccountMapper {
     public static Account toEntity(AccountCreateRequest request) {
         Account account = new Account();
         account.setAccountHolderName(request.getAccountHolderName());
-        account.setAccountType(AccountType.valueOf(request.getAccountType().toUpperCase()));
+        account.setAccountType(parseAccountType(request.getAccountType()));
         account.setBalance(request.getBalance());
         account.setEmail(request.getEmail());
         account.setPhoneNumber(request.getPhoneNumber());
@@ -53,7 +53,7 @@ public class AccountMapper {
             account.setAccountHolderName(request.getAccountHolderName());
         }
         if (request.getAccountType() != null) {
-            account.setAccountType(AccountType.valueOf(request.getAccountType().toUpperCase()));
+            account.setAccountType(parseAccountType(request.getAccountType()));
         }
         if (request.getBalance() != null) {
             account.setBalance(request.getBalance());
@@ -63,6 +63,14 @@ public class AccountMapper {
         }
         if (request.getPhoneNumber() != null) {
             account.setPhoneNumber(request.getPhoneNumber());
+        }
+    }
+
+    private static AccountType parseAccountType(String accountType) {
+        try {
+            return AccountType.valueOf(accountType.trim().toUpperCase());
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Invalid accountType. Allowed values: SAVINGS, CURRENT");
         }
     }
 }
