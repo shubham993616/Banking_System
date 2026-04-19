@@ -1,17 +1,9 @@
-/**
- * NexBank — Banking System Frontend
- * Vanilla JavaScript for CRUD + Banking operations via REST API
- */
-
-// =============================================
-// Configuration
-// =============================================
-
+const API_AUTH_BASE = 'http://localhost:8081/api/auth';
 const API_BASE_URL = 'http://localhost:8081/api/accounts';
+const TOKEN_KEY = 'nexbank.jwt';
 
-// =============================================
-// DOM References
-// =============================================
+const CREATE_FORM_SUBTITLE_DEFAULT =
+    'Each account is linked to one login email. Customers only see their own accounts.';
 
 const accountsTableBody = document.getElementById('accounts-tbody');
 const accountForm = document.getElementById('account-form');
@@ -24,8 +16,16 @@ const deleteOverlay = document.getElementById('delete-overlay');
 const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
 const emptyState = document.getElementById('empty-state');
 const toastContainer = document.getElementById('toast-container');
+const globalLoading = document.getElementById('global-loading');
 
-// Transaction modal
+const authSection = document.getElementById('auth-section');
+const sessionBanner = document.getElementById('session-banner');
+const sessionEmail = document.getElementById('session-email');
+const sessionRole = document.getElementById('session-role');
+const sessionExpiry = document.getElementById('session-expiry');
+const logoutBtn = document.getElementById('logout-btn');
+const accountsTableTitle = document.getElementById('accounts-table-title');
+
 const txnModalOverlay = document.getElementById('txn-modal-overlay');
 const txnModalClose = document.getElementById('txn-modal-close');
 const txnForm = document.getElementById('txn-form');
@@ -34,10 +34,8 @@ const txnBtnText = document.getElementById('txn-btn-text');
 const txnSubmitBtn = document.getElementById('txn-submit-btn');
 const txnAccountInfo = document.getElementById('txn-account-info');
 
-// History modal
 const historyOverlay = document.getElementById('history-overlay');
 const historyClose = document.getElementById('history-close');
-const historyTitle = document.getElementById('history-title');
 const historyAccountInfo = document.getElementById('history-account-info');
 const historyTableWrapper = document.getElementById('history-table-wrapper');
 const historyTbody = document.getElementById('history-tbody');
@@ -47,25 +45,25 @@ const historyPagination = document.getElementById('history-pagination');
 const historyPrevBtn = document.getElementById('history-prev-btn');
 const historyNextBtn = document.getElementById('history-next-btn');
 const historyPageInfo = document.getElementById('history-page-info');
-const globalLoading = document.getElementById('global-loading');
 
-// Stats
 const totalAccountsEl = document.getElementById('total-accounts');
 const totalBalanceEl = document.getElementById('total-balance');
 const savingsCountEl = document.getElementById('savings-count');
 const currentCountEl = document.getElementById('current-count');
 
-// All accounts data (cached for search/filter)
 let allAccounts = [];
 let deleteTargetId = null;
 let activeRequestCount = 0;
 let historyState = { accountId: null, page: 0, totalPages: 0 };
+let authState = { token: null, email: null, role: null };
+let sessionExpiryIntervalId = null;
+let pendingUserEmail = '';
 
 // =============================================
 // Navigation
 // =============================================
 
-document.querySelectorAll('.nav-link').forEach(link => {
+document.querySelectorAll('.nav-link').forEach((link) => {
     link.addEventListener('click', (e) => {
         e.preventDefault();
         const section = link.dataset.section;
@@ -80,18 +78,16 @@ function switchSection(sectionName) {
     document.getElementById(`${sectionName}-section`)?.classList.add('active');
 }
 
-// =============================================
-// API Functions
-// =============================================
-
-/**
- * Fetch all accounts from the backend.
- * API now returns { status, message, data } wrapper.
- */
 async function fetchAccounts() {
+    if (!authState.token) {
+        renderAccounts([]);
+        updateStats([]);
+        return;
+    }
     try {
-        const result = await apiRequest(API_BASE_URL);
-        allAccounts = result.data || result; // Support both ApiResponse and raw array
+        const endpoint = authState.role === 'ADMIN' ? API_BASE_URL : `${API_BASE_URL}/me`;
+        const result = await apiRequest(endpoint);
+        allAccounts = result.data || result;
         renderAccounts(allAccounts);
         updateStats(allAccounts);
     } catch (error) {
@@ -100,9 +96,6 @@ async function fetchAccounts() {
     }
 }
 
-/**
- * Create a new account.
- */
 async function createAccount(accountData) {
     const submitBtn = document.getElementById('submit-btn');
     setButtonLoading(submitBtn, true, 'Creating...');
@@ -128,9 +121,6 @@ async function createAccount(accountData) {
     }
 }
 
-/**
- * Update an existing account.
- */
 async function updateAccount(id, accountData) {
     const submitBtn = editForm.querySelector('button[type="submit"]');
     setButtonLoading(submitBtn, true, 'Saving...');
@@ -153,9 +143,6 @@ async function updateAccount(id, accountData) {
     }
 }
 
-/**
- * Delete an account.
- */
 async function deleteAccount(id) {
     setButtonLoading(confirmDeleteBtn, true, 'Deleting...');
 
@@ -175,9 +162,6 @@ async function deleteAccount(id) {
     }
 }
 
-/**
- * Deposit money into an account.
- */
 async function depositMoney(accountId, amount) {
     setButtonLoading(txnSubmitBtn, true, 'Processing...');
 
@@ -200,9 +184,6 @@ async function depositMoney(accountId, amount) {
     }
 }
 
-/**
- * Withdraw money from an account.
- */
 async function withdrawMoney(accountId, amount) {
     setButtonLoading(txnSubmitBtn, true, 'Processing...');
 
@@ -225,9 +206,6 @@ async function withdrawMoney(accountId, amount) {
     }
 }
 
-/**
- * Fetch transaction history for an account.
- */
 async function fetchTransactions(accountId, page = 0) {
     historyState.accountId = accountId;
     historyState.page = page;
@@ -256,12 +234,12 @@ async function fetchTransactions(accountId, page = 0) {
                 <td>#${txn.id}</td>
                 <td>${formatDateTime(txn.timestamp)}</td>
                 <td>
-                    <span class="badge ${txn.type === 'DEPOSIT' ? 'badge-deposit' : 'badge-withdraw'}">
-                        ${txn.type === 'DEPOSIT' ? '↑' : '↓'} ${txn.type}
+                    <span class="badge ${txn.type.includes('DEPOSIT') || txn.type.includes('CREDIT') ? 'badge-deposit' : 'badge-withdraw'}">
+                        ${txn.type}
                     </span>
                 </td>
-                <td class="${txn.type === 'DEPOSIT' ? 'amount-deposit' : 'amount-withdraw'}">
-                    ${txn.type === 'DEPOSIT' ? '+' : '-'}₹${formatBalance(txn.amount)}
+                <td class="${txn.type.includes('DEPOSIT') || txn.type.includes('CREDIT') ? 'amount-deposit' : 'amount-withdraw'}">
+                    ${txn.type.includes('DEPOSIT') || txn.type.includes('CREDIT') ? '+' : '-'}₹${formatBalance(txn.amount)}
                 </td>
                 <td class="balance-cell">₹${formatBalance(txn.balanceAfterTransaction)}</td>
             </tr>
@@ -284,9 +262,6 @@ async function fetchTransactions(accountId, page = 0) {
 // Render Functions
 // =============================================
 
-/**
- * Render the accounts table.
- */
 function renderAccounts(accounts) {
     const tableWrapper = document.querySelector('#dashboard-section .table-wrapper');
 
@@ -335,9 +310,6 @@ function renderAccounts(accounts) {
     `).join('');
 }
 
-/**
- * Update dashboard statistics.
- */
 function updateStats(accounts) {
     const total = accounts.length;
     const totalBalance = accounts.reduce((sum, acc) => sum + parseFloat(acc.balance || 0), 0);
@@ -350,11 +322,214 @@ function updateStats(accounts) {
     animateNumber(currentCountEl, current);
 }
 
-// =============================================
-// Event Handlers
-// =============================================
+function hideEl(id) {
+    document.getElementById(id)?.classList.add('hidden');
+}
 
-// Create account form submission
+function showEl(id) {
+    document.getElementById(id)?.classList.remove('hidden');
+}
+
+function resetAuthFlowToRolePicker() {
+    showEl('auth-role-picker');
+    hideEl('auth-user-panel');
+    hideEl('auth-admin-panel');
+    ['user-step-email', 'user-step-new', 'user-step-returning', 'user-step-otp-only', 'user-step-forgot'].forEach(hideEl);
+    document.getElementById('user-register-final-form')?.classList.add('hidden');
+    document.getElementById('user-reset-pass-form')?.classList.add('hidden');
+    hideEl('admin-step-otp');
+    showEl('admin-step-pass');
+    pendingUserEmail = '';
+    const sub = document.getElementById('auth-subtitle');
+    if (sub) sub.textContent = 'Choose how you want to sign in.';
+}
+
+async function sendOtpApi(email) {
+    await apiRequest(`${API_AUTH_BASE}/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+    }, false);
+}
+
+async function resendOtpApi(email) {
+    await apiRequest(`${API_AUTH_BASE}/resend-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+    }, false);
+}
+
+async function checkEmailRegistered(email) {
+    const result = await apiRequest(
+        `${API_AUTH_BASE}/check-email?email=${encodeURIComponent(email)}`,
+        {},
+        false
+    );
+    const data = result.data !== undefined ? result.data : result;
+    return data.registered === true;
+}
+
+async function registerCompleteApi(body) {
+    const result = await apiRequest(`${API_AUTH_BASE}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    }, false);
+    return result.data?.token;
+}
+
+async function loginPasswordApi(body) {
+    const result = await apiRequest(`${API_AUTH_BASE}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    }, false);
+    return result.data?.token;
+}
+
+async function loginOtpSendApi(email) {
+    await apiRequest(`${API_AUTH_BASE}/login-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+    }, false);
+}
+
+async function verifyOtpSimpleApi(email, otp) {
+    const result = await apiRequest(`${API_AUTH_BASE}/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp }),
+    }, false);
+    return result.data?.token;
+}
+
+async function forgotPasswordApi(email) {
+    await apiRequest(`${API_AUTH_BASE}/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+    }, false);
+}
+
+async function resetPasswordApi(body) {
+    await apiRequest(`${API_AUTH_BASE}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    }, false);
+}
+
+async function adminLoginApi(email, password) {
+    await apiRequest(`${API_AUTH_BASE}/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+    }, false);
+}
+
+async function adminVerifyOtpApi(email, otp) {
+    const result = await apiRequest(`${API_AUTH_BASE}/admin/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp }),
+    }, false);
+    return result.data?.token;
+}
+
+async function completeAuthWithToken(token) {
+    if (!token) throw new Error('No token received from server.');
+    setSession(token);
+    updateAuthUI();
+    await fetchAccounts();
+    showToast('Signed in successfully.', 'success');
+}
+
+function setSession(token) {
+    authState.token = token;
+    const claims = parseJwtClaims(token);
+    authState.email = claims.sub || '';
+    authState.role = claims.role || 'USER';
+    localStorage.setItem(TOKEN_KEY, token);
+}
+
+function clearSession() {
+    authState = { token: null, email: null, role: null };
+    localStorage.removeItem(TOKEN_KEY);
+    clearTokenExpiryTicker();
+}
+
+function configureAccountFormForRole() {
+    const adminGroup = document.getElementById('admin-email-group');
+    const userHint = document.getElementById('user-email-hint-group');
+    const emailInput = document.getElementById('email');
+    const formSubtitle = document.getElementById('form-subtitle');
+    if (!adminGroup || !userHint || !emailInput) return;
+
+    if (!authState.token) {
+        adminGroup.classList.remove('hidden');
+        userHint.classList.add('hidden');
+        emailInput.required = false;
+        if (formSubtitle) formSubtitle.textContent = CREATE_FORM_SUBTITLE_DEFAULT;
+        return;
+    }
+
+    if (authState.role === 'ADMIN') {
+        adminGroup.classList.remove('hidden');
+        userHint.classList.add('hidden');
+        emailInput.required = true;
+        if (formSubtitle) {
+            formSubtitle.textContent =
+                'Enter the customer’s registered email so only they can access this account after login.';
+        }
+    } else {
+        adminGroup.classList.add('hidden');
+        userHint.classList.remove('hidden');
+        emailInput.required = false;
+        const display = document.getElementById('user-email-display');
+        if (display) display.textContent = authState.email || '';
+        if (formSubtitle) {
+            formSubtitle.textContent =
+                'New accounts are tied to your login; other users never see them.';
+        }
+    }
+}
+
+function updateAuthUI() {
+    const isAuthenticated = !!authState.token;
+    authSection.classList.toggle('hidden', isAuthenticated);
+    sessionBanner.classList.toggle('hidden', !isAuthenticated);
+    document.querySelectorAll('.section').forEach((s) => {
+        s.classList.toggle('active', false);
+        s.classList.toggle('hidden', !isAuthenticated);
+    });
+    document.querySelectorAll('.nav-link').forEach((link) => {
+        link.style.pointerEvents = isAuthenticated ? 'auto' : 'none';
+        link.style.opacity = isAuthenticated ? '1' : '0.55';
+    });
+
+    if (!isAuthenticated) {
+        sessionEmail.textContent = 'Not logged in';
+        sessionRole.textContent = 'GUEST';
+        sessionRole.className = 'badge badge-current';
+        sessionExpiry.textContent = 'Token expiry: N/A';
+        resetAuthFlowToRolePicker();
+        configureAccountFormForRole();
+        return;
+    }
+
+    sessionEmail.textContent = authState.email;
+    sessionRole.textContent = authState.role;
+    sessionRole.className = `badge ${authState.role === 'ADMIN' ? 'badge-current' : 'badge-savings'}`;
+    accountsTableTitle.textContent = authState.role === 'ADMIN' ? 'All Accounts (ADMIN)' : 'My Accounts';
+    startTokenExpiryTicker();
+
+    document.querySelectorAll('.section').forEach((s) => s.classList.remove('hidden'));
+    configureAccountFormForRole();
+    switchSection('dashboard');
+}
+
 accountForm.addEventListener('submit', (e) => {
     e.preventDefault();
 
@@ -368,15 +543,21 @@ accountForm.addEventListener('submit', (e) => {
 
     const formData = {
         accountHolderName: name,
-        email: document.getElementById('email').value.trim() || null,
         phoneNumber: document.getElementById('phoneNumber').value.trim() || null,
         accountType: type,
         balance: parseFloat(balance),
     };
+    if (authState.role === 'ADMIN') {
+        const custEmail = document.getElementById('email').value.trim();
+        if (!custEmail) {
+            showToast('Customer email is required when creating an account as administrator.', 'error');
+            return;
+        }
+        formData.email = custEmail;
+    }
     createAccount(formData);
 });
 
-// Edit form submission
 editForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const id = document.getElementById('modal-edit-id').value;
@@ -390,7 +571,6 @@ editForm.addEventListener('submit', (e) => {
     updateAccount(id, formData);
 });
 
-// Transaction form submission
 txnForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const accountId = document.getElementById('txn-account-id').value;
@@ -409,7 +589,6 @@ txnForm.addEventListener('submit', (e) => {
     }
 });
 
-// Search / filter accounts
 searchInput.addEventListener('input', (e) => {
     const query = e.target.value.toLowerCase();
     const filtered = allAccounts.filter(a =>
@@ -421,7 +600,6 @@ searchInput.addEventListener('input', (e) => {
     renderAccounts(filtered);
 });
 
-// Refresh button
 refreshBtn.addEventListener('click', () => {
     setButtonLoading(refreshBtn, true, 'Loading...');
     fetchAccounts().finally(() => {
@@ -437,9 +615,208 @@ refreshBtn.addEventListener('click', () => {
     });
 });
 
-// =============================================
-// Transaction Modal Helpers
-// =============================================
+document.getElementById('btn-user-flow').addEventListener('click', () => {
+    hideEl('auth-role-picker');
+    showEl('auth-user-panel');
+    showEl('user-step-email');
+    ['user-step-new', 'user-step-returning', 'user-step-otp-only', 'user-step-forgot'].forEach(hideEl);
+    document.getElementById('auth-subtitle').textContent = 'Enter your email to continue.';
+});
+
+document.getElementById('btn-admin-flow').addEventListener('click', () => {
+    hideEl('auth-role-picker');
+    showEl('auth-admin-panel');
+    hideEl('admin-step-otp');
+    showEl('admin-step-pass');
+    document.getElementById('auth-subtitle').textContent = 'Administrator sign-in (password + OTP).';
+});
+
+document.getElementById('user-back-to-role').addEventListener('click', resetAuthFlowToRolePicker);
+document.getElementById('admin-back-to-role').addEventListener('click', resetAuthFlowToRolePicker);
+
+document.getElementById('user-email-check-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('user-flow-email').value.trim();
+    if (!email) return;
+    try {
+        const registered = await checkEmailRegistered(email);
+        pendingUserEmail = email;
+        hideEl('user-step-email');
+        if (!registered) {
+            showEl('user-step-new');
+            document.getElementById('user-register-final-form').classList.add('hidden');
+            document.getElementById('auth-subtitle').textContent = 'New account — request a code, then set your details.';
+        } else {
+            document.getElementById('user-ret-email').value = email;
+            showEl('user-step-returning');
+            document.getElementById('auth-subtitle').textContent = 'Welcome back — password or email OTP.';
+        }
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+});
+
+document.getElementById('user-new-send-otp').addEventListener('click', async () => {
+    const email = pendingUserEmail || document.getElementById('user-flow-email').value.trim();
+    if (!email) return;
+    try {
+        await sendOtpApi(email);
+        document.getElementById('user-register-final-form').classList.remove('hidden');
+        showToast('OTP sent. Check your email.', 'success');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+});
+
+document.getElementById('user-register-final-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = pendingUserEmail || document.getElementById('user-flow-email').value.trim();
+    const body = {
+        email,
+        otp: document.getElementById('reg-otp').value.trim(),
+        name: document.getElementById('reg-name').value.trim(),
+        password: document.getElementById('reg-pass').value,
+    };
+    const btn = document.getElementById('reg-submit-btn');
+    setButtonLoading(btn, true, 'Creating...');
+    try {
+        const token = await registerCompleteApi(body);
+        await completeAuthWithToken(token);
+    } catch (err) {
+        showToast(err.message, 'error');
+    } finally {
+        setButtonLoading(btn, false, 'Create account');
+    }
+});
+
+document.getElementById('user-pw-login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('user-ret-email').value.trim();
+    const password = document.getElementById('user-pw').value;
+    try {
+        const token = await loginPasswordApi({ email, password });
+        await completeAuthWithToken(token);
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+});
+
+document.getElementById('user-btn-otp-login').addEventListener('click', async () => {
+    const email = document.getElementById('user-ret-email').value.trim();
+    try {
+        await loginOtpSendApi(email);
+        document.getElementById('user-otp-login-email').value = email;
+        hideEl('user-step-returning');
+        showEl('user-step-otp-only');
+        document.getElementById('auth-subtitle').textContent = 'Enter the code we emailed you.';
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+});
+
+document.getElementById('user-login-otp-resend').addEventListener('click', async () => {
+    const email = document.getElementById('user-otp-login-email').value.trim();
+    try {
+        await loginOtpSendApi(email);
+        showToast('OTP resent.', 'success');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+});
+
+document.getElementById('user-otp-only-verify-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('user-otp-login-email').value.trim();
+    const otp = document.getElementById('user-otp-only-code').value.trim();
+    try {
+        const token = await verifyOtpSimpleApi(email, otp);
+        await completeAuthWithToken(token);
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+});
+
+document.getElementById('user-btn-forgot').addEventListener('click', () => {
+    hideEl('user-step-returning');
+    showEl('user-step-forgot');
+    document.getElementById('user-reset-pass-form').classList.add('hidden');
+    document.getElementById('auth-subtitle').textContent = 'Reset your password via email code.';
+});
+
+document.getElementById('forgot-back').addEventListener('click', () => {
+    hideEl('user-step-forgot');
+    showEl('user-step-returning');
+});
+
+document.getElementById('forgot-send').addEventListener('click', async () => {
+    const email = document.getElementById('user-ret-email').value.trim();
+    try {
+        await forgotPasswordApi(email);
+        document.getElementById('user-reset-pass-form').classList.remove('hidden');
+        showToast('If an account exists, an OTP was sent.', 'info');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+});
+
+document.getElementById('user-reset-pass-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('user-ret-email').value.trim();
+    const body = {
+        email,
+        otp: document.getElementById('reset-otp').value.trim(),
+        newPassword: document.getElementById('reset-newpw').value,
+    };
+    try {
+        await resetPasswordApi(body);
+        showToast('Password updated. Sign in with your new password.', 'success');
+        hideEl('user-step-forgot');
+        showEl('user-step-returning');
+        document.getElementById('user-pw').value = '';
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+});
+
+document.getElementById('admin-pass-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('admin-email').value.trim();
+    const password = document.getElementById('admin-password').value;
+    const btn = document.getElementById('admin-pass-submit');
+    setButtonLoading(btn, true, 'Sending OTP...');
+    try {
+        await adminLoginApi(email, password);
+        document.getElementById('admin-otp-email').value = email;
+        hideEl('admin-step-pass');
+        showEl('admin-step-otp');
+        showToast('Password OK. OTP sent to your email.', 'success');
+    } catch (err) {
+        showToast(err.message, 'error');
+    } finally {
+        setButtonLoading(btn, false, 'Continue');
+    }
+});
+
+document.getElementById('admin-otp-verify-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('admin-otp-email').value.trim();
+    const otp = document.getElementById('admin-otp-code').value.trim();
+    try {
+        const token = await adminVerifyOtpApi(email, otp);
+        await completeAuthWithToken(token);
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+});
+
+logoutBtn.addEventListener('click', () => {
+    clearSession();
+    allAccounts = [];
+    renderAccounts(allAccounts);
+    updateStats(allAccounts);
+    updateAuthUI();
+    showToast('Logged out successfully.', 'info');
+});
 
 function openTxnModal(id, type) {
     const account = allAccounts.find(a => a.id === id);
@@ -493,15 +870,11 @@ txnModalOverlay.addEventListener('click', (e) => {
     if (e.target === txnModalOverlay) closeTxnModal();
 });
 
-// =============================================
-// History Modal Helpers
-// =============================================
-
 function openHistoryModal(id) {
     const account = allAccounts.find(a => a.id === id);
     if (!account) return;
 
-    historyTitle.textContent = `Transaction History`;
+    document.getElementById('history-title').textContent = 'Transaction History';
     historyAccountInfo.innerHTML = `
         <div class="txn-info-row">
             <span class="txn-info-label">Account</span>
@@ -539,17 +912,15 @@ historyNextBtn.addEventListener('click', () => {
     }
 });
 
-// =============================================
-// Edit / Delete Modal Helpers
-// =============================================
-
 function openEditModal(id) {
     const account = allAccounts.find(a => a.id === id);
     if (!account) return;
 
     document.getElementById('modal-edit-id').value = account.id;
     document.getElementById('modal-name').value = account.accountHolderName;
-    document.getElementById('modal-email').value = account.email || '';
+    const modalEmail = document.getElementById('modal-email');
+    modalEmail.value = account.email || '';
+    modalEmail.readOnly = authState.role !== 'ADMIN';
     document.getElementById('modal-phone').value = account.phoneNumber || '';
     document.getElementById('modal-type').value = account.accountType;
     document.getElementById('modal-balance').value = account.balance;
@@ -586,24 +957,16 @@ deleteOverlay.addEventListener('click', (e) => {
     if (e.target === deleteOverlay) closeDeleteModal();
 });
 
-// =============================================
-// Form Reset
-// =============================================
-
 function resetForm() {
     accountForm.reset();
     document.getElementById('edit-id').value = '';
     document.getElementById('cancel-btn').style.display = 'none';
     document.getElementById('form-title').textContent = 'Create New Account';
-    document.getElementById('form-subtitle').textContent = 'Fill in the details to register a new bank account';
+    document.getElementById('form-subtitle').textContent = CREATE_FORM_SUBTITLE_DEFAULT;
     document.getElementById('submit-btn').innerHTML = `
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
         Create Account`;
 }
-
-// =============================================
-// Utility Functions
-// =============================================
 
 function formatBalance(amount) {
     return parseFloat(amount).toLocaleString('en-IN', {
@@ -648,12 +1011,6 @@ function animateNumber(element, target) {
     requestAnimationFrame(update);
 }
 
-/**
- * Set a button to loading state or restore it.
- * @param {HTMLElement} button
- * @param {boolean} isLoading
- * @param {string} text
- */
 function setButtonLoading(button, isLoading, text) {
     if (isLoading) {
         button.disabled = true;
@@ -675,13 +1032,29 @@ function setGlobalLoading(isLoading) {
     globalLoading.style.display = activeRequestCount > 0 ? 'flex' : 'none';
 }
 
-async function apiRequest(url, options = {}) {
+async function apiRequest(url, options = {}, withAuth = true) {
     setGlobalLoading(true);
     try {
-        const response = await fetch(url, options);
+        const headers = { ...(options.headers || {}) };
+        if (withAuth && authState.token) {
+            headers.Authorization = `Bearer ${authState.token}`;
+        }
+        let response;
+        try {
+            response = await fetch(url, { ...options, headers });
+        } catch (networkErr) {
+            const hint =
+                'Cannot reach the server. Start the Spring Boot app on port 8081. ' +
+                'If you opened index.html as a file, use Live Server (http://localhost:…) instead — browsers block file:// API calls.';
+            throw new Error(networkErr instanceof TypeError ? hint : networkErr.message);
+        }
         const result = await response.json().catch(() => ({}));
         if (!response.ok) {
             const message = result.message || result.error || 'Request failed';
+            if (response.status === 401 && withAuth) {
+                clearSession();
+                updateAuthUI();
+            }
             throw new Error(message);
         }
         return result;
@@ -690,11 +1063,6 @@ async function apiRequest(url, options = {}) {
     }
 }
 
-/**
- * Show a toast notification.
- * @param {string} message
- * @param {'success' | 'error' | 'info'} type
- */
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
@@ -714,10 +1082,6 @@ function showToast(message, type = 'info') {
     }, 4000);
 }
 
-// =============================================
-// Keyboard Shortcuts
-// =============================================
-
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeModal();
@@ -727,10 +1091,71 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// =============================================
-// Initialize
-// =============================================
+function parseJwtClaims(token) {
+    try {
+        const payload = token.split('.')[1];
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const decoded = atob(normalized);
+        return JSON.parse(decoded);
+    } catch (_error) {
+        return {};
+    }
+}
 
-document.addEventListener('DOMContentLoaded', () => {
-    fetchAccounts();
+function startTokenExpiryTicker() {
+    clearTokenExpiryTicker();
+    updateTokenExpiryText();
+    sessionExpiryIntervalId = setInterval(updateTokenExpiryText, 1000);
+}
+
+function clearTokenExpiryTicker() {
+    if (sessionExpiryIntervalId) {
+        clearInterval(sessionExpiryIntervalId);
+        sessionExpiryIntervalId = null;
+    }
+}
+
+function updateTokenExpiryText() {
+    if (!authState.token) {
+        sessionExpiry.textContent = 'Token expiry: N/A';
+        return;
+    }
+
+    const claims = parseJwtClaims(authState.token);
+    if (!claims.exp) {
+        sessionExpiry.textContent = 'Token expiry: Unknown';
+        return;
+    }
+
+    const expiryMs = claims.exp * 1000;
+    const remainingMs = expiryMs - Date.now();
+    if (remainingMs <= 0) {
+        sessionExpiry.textContent = 'Token expiry: Expired';
+        clearSession();
+        updateAuthUI();
+        showToast('Session expired. Please login again.', 'info');
+        return;
+    }
+
+    const totalSeconds = Math.floor(remainingMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const expiryTime = new Date(expiryMs).toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+    });
+    sessionExpiry.textContent = `Token expiry in ${minutes}m ${seconds}s (${expiryTime})`;
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const savedToken = localStorage.getItem(TOKEN_KEY);
+    if (savedToken) {
+        setSession(savedToken);
+    }
+    updateAuthUI();
+    if (authState.token) {
+        await fetchAccounts();
+    }
 });

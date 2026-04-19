@@ -29,4 +29,8 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
 
     /** Search by account holder name (case-insensitive, partial match). */
     List<Account> findByAccountHolderNameContainingIgnoreCase(String name);
+
+    List<Account> findByEmail(String email);
+
+    Optional<Account> findByIdAndEmail(Long id, String email);
 }

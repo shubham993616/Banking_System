@@ -6,12 +6,16 @@ import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
  * REST Controller for Account and Transaction operations.
  * Thin layer — delegates all business logic to AccountService.
+ *
+ * <p>Multi-tenant access: JWT subject is the user email. Regular users may only access accounts
+ * whose stored {@code email} matches their login. {@code ROLE_ADMIN} may list and manage all accounts.</p>
  *
  * Endpoints:
  *   POST   /api/accounts               → Create account
@@ -25,7 +29,6 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/accounts")
-@CrossOrigin(origins = "*")
 public class AccountController {
 
     private static final Logger log = LoggerFactory.getLogger(AccountController.class);
@@ -48,6 +51,7 @@ public class AccountController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<AccountDTO>>> getAllAccounts() {
         log.debug("GET /api/accounts — Fetching all accounts");
         List<AccountDTO> accounts = accountService.getAllAccounts();
@@ -59,6 +63,12 @@ public class AccountController {
         log.debug("GET /api/accounts/{} — Fetching account", id);
         AccountDTO account = accountService.getAccountById(id);
         return ResponseEntity.ok(ApiResponse.success("Account retrieved successfully", account));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<List<AccountDTO>>> getMyAccounts() {
+        List<AccountDTO> accounts = accountService.getMyAccounts();
+        return ResponseEntity.ok(ApiResponse.success("Accounts retrieved successfully", accounts));
     }
 
     @PutMapping("/{id}")
@@ -111,5 +121,11 @@ public class AccountController {
         log.debug("GET /api/accounts/{}/transactions — Fetching history", id);
         PagedResponse<TransactionDTO> transactions = accountService.getTransactions(id, page, size);
         return ResponseEntity.ok(ApiResponse.success("Transactions retrieved successfully", transactions));
+    }
+
+    @PostMapping("/transfer")
+    public ResponseEntity<ApiResponse<Void>> transfer(@Valid @RequestBody TransferRequest request) {
+        accountService.transfer(request);
+        return ResponseEntity.ok(ApiResponse.success("Transfer successful", null));
     }
 }

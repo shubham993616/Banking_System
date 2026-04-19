@@ -8,6 +8,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -56,6 +59,26 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(OtpDeliveryException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOtpDelivery(
+            OtpDeliveryException ex, HttpServletRequest request) {
+        log.warn("OTP email delivery failed at {}: {}", request.getRequestURI(), ex.getMessage());
+        return new ResponseEntity<>(
+                ApiResponse.error(503, ex.getMessage()),
+                HttpStatus.SERVICE_UNAVAILABLE
+        );
+    }
+
+    @ExceptionHandler(OtpRateLimitExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOtpRateLimit(
+            OtpRateLimitExceededException ex, HttpServletRequest request) {
+        log.warn("OTP rate limit at {}: {}", request.getRequestURI(), ex.getMessage());
+        return new ResponseEntity<>(
+                ApiResponse.error(429, ex.getMessage()),
+                HttpStatus.TOO_MANY_REQUESTS
+        );
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(
             IllegalArgumentException ex, HttpServletRequest request) {
@@ -63,6 +86,30 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(
                 ApiResponse.error(400, ex.getMessage()),
                 HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBadCredentials(BadCredentialsException ex, HttpServletRequest request) {
+        return new ResponseEntity<>(
+                ApiResponse.error(401, "Invalid email or password."),
+                HttpStatus.UNAUTHORIZED
+        );
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDisabledUser(DisabledException ex, HttpServletRequest request) {
+        return new ResponseEntity<>(
+                ApiResponse.error(403, "User is not active. Complete registration OTP verification."),
+                HttpStatus.FORBIDDEN
+        );
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        return new ResponseEntity<>(
+                ApiResponse.error(403, "Access denied."),
+                HttpStatus.FORBIDDEN
         );
     }
 

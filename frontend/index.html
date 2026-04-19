@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,95 +7,397 @@
     <title>NexBank — Banking System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+
+    <!-- Inline: apply saved theme before paint to avoid flash -->
+    <script>
+      (function(){
+        var t = localStorage.getItem('nexbank-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', t);
+      })();
+    </script>
 </head>
 <body>
 
-    <!-- ===== HEADER / NAVBAR ===== -->
+    <!-- ===== NAVBAR ===== -->
     <header class="navbar">
-        <div class="navbar-brand">
-            <div class="logo-icon">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="12" y1="1" x2="12" y2="23"></line>
-                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                </svg>
+        <div class="navbar-inner">
+            <div class="navbar-brand">
+                <div class="logo-mark">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="1" x2="12" y2="23"></line>
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                </div>
+                <div class="brand-words">
+                    <span class="brand-name">NexBank</span>
+                    <span class="brand-sub">Personal Banking</span>
+                </div>
             </div>
-            <span class="brand-text">NexBank</span>
+
+            <nav class="navbar-nav">
+                <a href="#" class="nav-link active" data-section="dashboard">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="#" class="nav-link" data-section="create">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    New Account
+                </a>
+            </nav>
+
+            <div class="navbar-right">
+                <div class="nav-status-dot"></div>
+                <span class="nav-status-text">Secure Session</span>
+
+                <!-- ─── Theme Toggle ─── -->
+                <button class="theme-toggle" id="theme-toggle-btn" title="Toggle dark/light mode" aria-label="Toggle dark/light mode">
+                    <!-- Moon (shown in light mode) -->
+                    <svg class="theme-toggle-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                    <!-- Sun (shown in dark mode) -->
+                    <svg class="theme-toggle-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"/>
+                        <line x1="12" y1="1" x2="12" y2="3"/>
+                        <line x1="12" y1="21" x2="12" y2="23"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                        <line x1="1" y1="12" x2="3" y2="12"/>
+                        <line x1="21" y1="12" x2="23" y2="12"/>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                </button>
+            </div>
         </div>
-        <nav class="navbar-nav">
-            <a href="#" class="nav-link active" data-section="dashboard">Dashboard</a>
-            <a href="#" class="nav-link" data-section="create">New Account</a>
-        </nav>
     </header>
 
-    <!-- ===== MAIN CONTENT ===== -->
+    <!-- ===== MAIN ===== -->
     <main class="main-content">
 
-        <!-- ===== DASHBOARD SECTION ===== -->
-        <section id="dashboard-section" class="section active">
-            <div class="section-header">
-                <div>
-                    <h1>Accounts Dashboard</h1>
-                    <p class="section-subtitle">Manage and monitor all bank accounts</p>
+        <!-- ==============================
+             AUTH SECTION
+        =============================== -->
+        <section id="auth-section" class="auth-section">
+            <div class="auth-scene">
+                <!-- Left illustration panel -->
+                <div class="auth-panel-left">
+                    <div class="auth-brand-large">
+                        <div class="auth-brand-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="1" x2="12" y2="23"></line>
+                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                            </svg>
+                        </div>
+                        <span class="auth-brand-name">NexBank</span>
+                    </div>
+                    <h2 class="auth-panel-headline">Smart banking<br>for modern life.</h2>
+                    <p class="auth-panel-sub">Manage accounts, transfers, and transaction history — all in one secure place.</p>
+                    <div class="auth-feature-list">
+                        <div class="auth-feature-item">
+                            <div class="auth-feature-dot emerald"></div>
+                            <span>Real-time balance tracking</span>
+                        </div>
+                        <div class="auth-feature-item">
+                            <div class="auth-feature-dot blue"></div>
+                            <span>Instant deposits &amp; withdrawals</span>
+                        </div>
+                        <div class="auth-feature-item">
+                            <div class="auth-feature-dot amber"></div>
+                            <span>Full transaction history</span>
+                        </div>
+                    </div>
+                    <div class="auth-panel-badge">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        256-bit TLS Encrypted
+                    </div>
                 </div>
-                <button class="btn btn-primary" id="refresh-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="23 4 23 10 17 10"></polyline>
-                        <polyline points="1 20 1 14 7 14"></polyline>
-                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+
+                <!-- Right form panel -->
+                <div class="auth-card">
+                    <div class="auth-card-top-bar"></div>
+
+                    <div class="auth-header">
+                        <h1 id="auth-title">Welcome back</h1>
+                        <p id="auth-subtitle">Choose your account type to sign in.</p>
+                    </div>
+
+                    <!-- Role picker -->
+                    <div id="auth-role-picker">
+                        <div class="auth-role-buttons">
+                            <button type="button" class="role-btn role-btn-primary" id="btn-user-flow">
+                                <div class="role-btn-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                </div>
+                                <div class="role-btn-text">
+                                    <strong>Customer</strong>
+                                    <span>Personal banking portal</span>
+                                </div>
+                                <svg class="role-btn-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                            <button type="button" class="role-btn role-btn-secondary" id="btn-admin-flow">
+                                <div class="role-btn-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                </div>
+                                <div class="role-btn-text">
+                                    <strong>Administrator</strong>
+                                    <span>Manage all accounts</span>
+                                </div>
+                                <svg class="role-btn-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- User flow -->
+                    <div id="auth-user-panel" class="hidden">
+                        <button type="button" class="btn btn-ghost-sm auth-back" id="user-back-to-role">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                            Back
+                        </button>
+
+                        <div id="user-step-email">
+                            <form id="user-email-check-form" class="auth-form">
+                                <div class="form-group">
+                                    <label for="user-flow-email">Email Address <span class="required">*</span></label>
+                                    <div class="input-wrap">
+                                        <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                        <input type="email" id="user-flow-email" required autocomplete="email" placeholder="you@example.com">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-full" id="user-email-next">
+                                    Continue
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg>
+                                </button>
+                            </form>
+                        </div>
+
+                        <div id="user-step-new" class="hidden">
+                            <p class="form-hint-box">No account found. Send a verification code to register.</p>
+                            <button type="button" class="btn btn-primary" id="user-new-send-otp">Send Verification Code</button>
+                            <form id="user-register-final-form" class="auth-form hidden">
+                                <div class="form-group">
+                                    <label for="reg-otp">6-digit OTP <span class="required">*</span></label>
+                                    <div class="input-wrap"><input type="text" id="reg-otp" maxlength="6" pattern="\d{6}" inputmode="numeric" required autocomplete="one-time-code" placeholder="000000"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="reg-name">Full Name <span class="required">*</span></label>
+                                    <div class="input-wrap"><input type="text" id="reg-name" required autocomplete="name" placeholder="John Doe"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="reg-pass">Password (min 6) <span class="required">*</span></label>
+                                    <div class="input-wrap"><input type="password" id="reg-pass" minlength="6" required autocomplete="new-password" placeholder="••••••••"></div>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-full" id="reg-submit-btn">Create Account</button>
+                            </form>
+                        </div>
+
+                        <div id="user-step-returning" class="hidden">
+                            <p class="form-hint-box">Account found. Sign in with your password.</p>
+                            <input type="hidden" id="user-ret-email" value="">
+                            <form id="user-pw-login-form" class="auth-form">
+                                <div class="form-group">
+                                    <label for="user-pw">Password <span class="required">*</span></label>
+                                    <div class="input-wrap">
+                                        <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                        <input type="password" id="user-pw" minlength="6" required autocomplete="current-password" placeholder="••••••••">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-full">Sign In</button>
+                            </form>
+                            <div class="auth-actions-row">
+                                <button type="button" class="btn btn-link" id="user-btn-otp-login">Sign in with OTP</button>
+                                <button type="button" class="btn btn-link" id="user-btn-forgot">Forgot password?</button>
+                            </div>
+                        </div>
+
+                        <div id="user-step-otp-only" class="hidden">
+                            <p class="form-hint-box">We sent a code to your inbox.</p>
+                            <button type="button" class="btn btn-ghost-sm" id="user-login-otp-resend">Resend OTP</button>
+                            <form id="user-otp-only-verify-form" class="auth-form">
+                                <input type="hidden" id="user-otp-login-email" value="">
+                                <div class="form-group">
+                                    <label for="user-otp-only-code">6-digit OTP <span class="required">*</span></label>
+                                    <div class="input-wrap"><input type="text" id="user-otp-only-code" maxlength="6" pattern="\d{6}" required inputmode="numeric" autocomplete="one-time-code" placeholder="000000"></div>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-full">Verify &amp; Sign In</button>
+                            </form>
+                        </div>
+
+                        <div id="user-step-forgot" class="hidden">
+                            <button type="button" class="btn btn-ghost-sm" id="forgot-back">← Back</button>
+                            <p class="form-hint-box">We'll email a reset code to set a new password.</p>
+                            <button type="button" class="btn btn-primary" id="forgot-send">Send Reset Code</button>
+                            <form id="user-reset-pass-form" class="auth-form hidden">
+                                <div class="form-group">
+                                    <label for="reset-otp">OTP <span class="required">*</span></label>
+                                    <div class="input-wrap"><input type="text" id="reset-otp" maxlength="6" pattern="\d{6}" required inputmode="numeric" placeholder="000000"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="reset-newpw">New Password (min 6) <span class="required">*</span></label>
+                                    <div class="input-wrap"><input type="password" id="reset-newpw" minlength="6" required autocomplete="new-password" placeholder="••••••••"></div>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-full">Update Password</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Admin flow -->
+                    <div id="auth-admin-panel" class="hidden">
+                        <button type="button" class="btn btn-ghost-sm auth-back" id="admin-back-to-role">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                            Back
+                        </button>
+                        <div id="admin-step-pass">
+                            <div class="admin-security-badge">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                Administrator — 2-Factor Authentication Required
+                            </div>
+                            <form id="admin-pass-form" class="auth-form">
+                                <div class="form-group">
+                                    <label for="admin-email">Admin Email <span class="required">*</span></label>
+                                    <div class="input-wrap">
+                                        <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                        <input type="email" id="admin-email" required autocomplete="username" placeholder="admin@nexbank.com">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="admin-password">Password <span class="required">*</span></label>
+                                    <div class="input-wrap">
+                                        <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                        <input type="password" id="admin-password" required autocomplete="current-password" placeholder="••••••••">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-full" id="admin-pass-submit">
+                                    Continue to 2FA
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg>
+                                </button>
+                            </form>
+                        </div>
+                        <div id="admin-step-otp" class="hidden">
+                            <p class="form-hint-box">Enter the 6-digit code sent to your email.</p>
+                            <form id="admin-otp-verify-form" class="auth-form">
+                                <input type="hidden" id="admin-otp-email" value="">
+                                <div class="form-group">
+                                    <label for="admin-otp-code">One-Time Code <span class="required">*</span></label>
+                                    <div class="input-wrap"><input type="text" id="admin-otp-code" maxlength="6" pattern="\d{6}" required inputmode="numeric" autocomplete="one-time-code" placeholder="000000"></div>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-full">Verify &amp; Sign In</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==============================
+             SESSION BANNER
+        =============================== -->
+        <section id="session-banner" class="session-banner hidden">
+            <div class="session-left">
+                <div class="session-avatar">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <div class="session-details">
+                    <div class="session-top-row">
+                        <strong id="session-email">Not logged in</strong>
+                        <span id="session-role" class="badge badge-current">GUEST</span>
+                    </div>
+                    <div id="session-expiry" class="session-expiry">Token expiry: N/A</div>
+                </div>
+            </div>
+            <button class="btn btn-danger btn-sm" id="logout-btn" type="button">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Sign Out
+            </button>
+        </section>
+
+        <!-- ==============================
+             DASHBOARD
+        =============================== -->
+        <section id="dashboard-section" class="section">
+
+            <div class="dashboard-header">
+                <div class="dashboard-title-block">
+                    <h1>Accounts Overview</h1>
+                    <p class="section-subtitle">Monitor and manage all banking accounts in real time</p>
+                </div>
+                <button class="btn btn-secondary" id="refresh-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
                     </svg>
                     Refresh
                 </button>
             </div>
 
-            <!-- Stats Cards -->
+            <!-- Stats Grid -->
             <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon stat-icon-blue">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                <div class="stat-card stat-card--navy">
+                    <div class="stat-card-glow"></div>
+                    <div class="stat-top">
+                        <div class="stat-icon-wrap">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </div>
+                        <div class="stat-trend up">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+                            Active
+                        </div>
                     </div>
-                    <div class="stat-info">
-                        <span class="stat-value" id="total-accounts">0</span>
-                        <span class="stat-label">Total Accounts</span>
-                    </div>
+                    <span class="stat-value" id="total-accounts">0</span>
+                    <span class="stat-label">Total Accounts</span>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon stat-icon-green">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+
+                <div class="stat-card stat-card--emerald">
+                    <div class="stat-card-glow"></div>
+                    <div class="stat-top">
+                        <div class="stat-icon-wrap">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        </div>
                     </div>
-                    <div class="stat-info">
-                        <span class="stat-value" id="total-balance">₹0.00</span>
-                        <span class="stat-label">Total Balance</span>
-                    </div>
+                    <span class="stat-value" id="total-balance">₹0.00</span>
+                    <span class="stat-label">Total Balance</span>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon stat-icon-purple">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+
+                <div class="stat-card stat-card--blue">
+                    <div class="stat-card-glow"></div>
+                    <div class="stat-top">
+                        <div class="stat-icon-wrap">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                        </div>
                     </div>
-                    <div class="stat-info">
-                        <span class="stat-value" id="savings-count">0</span>
-                        <span class="stat-label">Savings Accounts</span>
-                    </div>
+                    <span class="stat-value" id="savings-count">0</span>
+                    <span class="stat-label">Savings Accounts</span>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon stat-icon-orange">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+
+                <div class="stat-card stat-card--amber">
+                    <div class="stat-card-glow"></div>
+                    <div class="stat-top">
+                        <div class="stat-icon-wrap">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                        </div>
                     </div>
-                    <div class="stat-info">
-                        <span class="stat-value" id="current-count">0</span>
-                        <span class="stat-label">Current Accounts</span>
-                    </div>
+                    <span class="stat-value" id="current-count">0</span>
+                    <span class="stat-label">Current Accounts</span>
                 </div>
             </div>
 
             <!-- Accounts Table -->
-            <div class="table-container">
-                <div class="table-header">
-                    <h2>All Accounts</h2>
+            <div class="data-card">
+                <div class="data-card-header">
+                    <div class="data-card-title-group">
+                        <h2 id="accounts-table-title">All Accounts</h2>
+                        <div class="data-card-indicator"></div>
+                    </div>
                     <div class="table-search">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                        <input type="text" id="search-input" placeholder="Search accounts...">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="search-input" placeholder="Search accounts…">
                     </div>
                 </div>
                 <div class="table-wrapper">
@@ -111,136 +413,230 @@
                             </tr>
                         </thead>
                         <tbody id="accounts-tbody">
-                            <!-- Populated dynamically -->
+                            <!-- Skeleton rows shown while loading -->
+                            <tr class="skeleton-row">
+                                <td><div class="skeleton skeleton-cell skeleton-cell-sm"></div></td>
+                                <td><div class="skeleton skeleton-cell skeleton-cell-lg"></div></td>
+                                <td><div class="skeleton skeleton-cell skeleton-cell-md"></div></td>
+                                <td><div class="skeleton skeleton-cell skeleton-cell-sm"></div></td>
+                                <td><div class="skeleton skeleton-cell skeleton-cell-md"></div></td>
+                                <td><div class="skeleton skeleton-cell skeleton-cell-md"></div></td>
+                            </tr>
+                            <tr class="skeleton-row">
+                                <td><div class="skeleton skeleton-cell skeleton-cell-sm"></div></td>
+                                <td><div class="skeleton skeleton-cell skeleton-cell-full"></div></td>
+                                <td><div class="skeleton skeleton-cell skeleton-cell-md"></div></td>
+                                <td><div class="skeleton skeleton-cell skeleton-cell-sm"></div></td>
+                                <td><div class="skeleton skeleton-cell skeleton-cell-md"></div></td>
+                                <td><div class="skeleton skeleton-cell skeleton-cell-md"></div></td>
+                            </tr>
+                            <tr class="skeleton-row">
+                                <td><div class="skeleton skeleton-cell skeleton-cell-sm"></div></td>
+                                <td><div class="skeleton skeleton-cell skeleton-cell-lg"></div></td>
+                                <td><div class="skeleton skeleton-cell skeleton-cell-md"></div></td>
+                                <td><div class="skeleton skeleton-cell skeleton-cell-sm"></div></td>
+                                <td><div class="skeleton skeleton-cell skeleton-cell-md"></div></td>
+                                <td><div class="skeleton skeleton-cell skeleton-cell-md"></div></td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
-                <div id="empty-state" class="empty-state" style="display: none;">
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
-                    <h3>No accounts found</h3>
+                <div id="empty-state" class="empty-state" style="display:none;">
+                    <div class="empty-visual">
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                    </div>
+                    <h3>No accounts yet</h3>
                     <p>Create your first bank account to get started.</p>
-                    <button class="btn btn-primary" onclick="switchSection('create')">Create Account</button>
+                    <button class="btn btn-primary" onclick="switchSection('create')">Open an Account</button>
                 </div>
             </div>
         </section>
 
-        <!-- ===== CREATE ACCOUNT SECTION ===== -->
+        <!-- ==============================
+             CREATE ACCOUNT
+        =============================== -->
         <section id="create-section" class="section">
-            <div class="section-header">
-                <div>
-                    <h1 id="form-title">Create New Account</h1>
-                    <p class="section-subtitle" id="form-subtitle">Fill in the details to register a new bank account</p>
+            <div class="dashboard-header">
+                <div class="dashboard-title-block">
+                    <h1 id="form-title">Open New Account</h1>
+                    <p class="section-subtitle" id="form-subtitle">Each account is linked to one registered login email.</p>
                 </div>
             </div>
 
-            <div class="form-card">
-                <form id="account-form" autocomplete="off">
-                    <input type="hidden" id="edit-id" value="">
-
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="accountHolderName">Account Holder Name <span class="required">*</span></label>
-                            <input type="text" id="accountHolderName" name="accountHolderName" placeholder="e.g. Shubham Kumar" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="email">Email Address</label>
-                            <input type="email" id="email" name="email" placeholder="e.g. shubham@email.com">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="phoneNumber">Phone Number</label>
-                            <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="e.g. +91 9876543210">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="accountType">Account Type <span class="required">*</span></label>
-                            <select id="accountType" name="accountType" required>
-                                <option value="">Select type</option>
-                                <option value="SAVINGS">Savings</option>
-                                <option value="CURRENT">Current</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="balance">Initial Balance (₹) <span class="required">*</span></label>
-                            <input type="number" id="balance" name="balance" placeholder="e.g. 5000" min="0" step="0.01" required>
+            <div class="form-surface">
+                <div class="form-surface-sidebar">
+                    <div class="form-sidebar-item active-step">
+                        <div class="form-step-num">1</div>
+                        <div class="form-step-label">
+                            <strong>Account Details</strong>
+                            <span>Holder info &amp; type</span>
                         </div>
                     </div>
-
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-ghost" id="cancel-btn" style="display:none;" onclick="resetForm()">Cancel</button>
-                        <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                            Create Account
-                        </button>
+                    <div class="form-sidebar-divider"></div>
+                    <div class="form-sidebar-item">
+                        <div class="form-step-num dim">2</div>
+                        <div class="form-step-label dim">
+                            <strong>Review &amp; Confirm</strong>
+                            <span>Verify and create</span>
+                        </div>
                     </div>
-                </form>
+                </div>
+
+                <div class="form-surface-body">
+                    <form id="account-form" autocomplete="off">
+                        <input type="hidden" id="edit-id" value="">
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="accountHolderName">Account Holder Name <span class="required">*</span></label>
+                                <div class="input-wrap">
+                                    <svg class="input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    <input type="text" id="accountHolderName" name="accountHolderName" placeholder="e.g. Shubham Kumar" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group" id="admin-email-group">
+                                <label for="email">Customer Email <span class="required">*</span></label>
+                                <div class="input-wrap">
+                                    <svg class="input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                    <input type="email" id="email" name="email" placeholder="Customer's registered email" autocomplete="off">
+                                </div>
+                                <p class="form-hint" id="admin-email-hint">Must match the customer's registered login email.</p>
+                            </div>
+
+                            <div class="form-group hidden" id="user-email-hint-group">
+                                <span class="form-label-like">Linked email</span>
+                                <p class="form-hint"><strong id="user-email-display"></strong> — only you can access accounts under this session.</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="phoneNumber">Phone Number</label>
+                                <div class="input-wrap">
+                                    <svg class="input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                                    <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="e.g. +91 9876543210">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="accountType">Account Type <span class="required">*</span></label>
+                                <div class="select-wrap">
+                                    <select id="accountType" name="accountType" required>
+                                        <option value="">Select account type</option>
+                                        <option value="SAVINGS">Savings Account</option>
+                                        <option value="CURRENT">Current Account</option>
+                                    </select>
+                                    <svg class="select-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="balance">Initial Deposit (₹) <span class="required">*</span></label>
+                                <div class="input-wrap input-prefix">
+                                    <span class="input-prefix-symbol">₹</span>
+                                    <input type="number" id="balance" name="balance" placeholder="0.00" min="0" step="0.01" required style="padding-left: 2.5rem;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" id="cancel-btn" style="display:none;" onclick="resetForm()">Cancel</button>
+                            <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Create Account
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </section>
     </main>
 
-    <!-- ===== EDIT MODAL ===== -->
+    <!-- ==============================
+         EDIT MODAL
+    =============================== -->
     <div class="modal-overlay" id="modal-overlay">
         <div class="modal">
             <div class="modal-header">
-                <h2>Edit Account</h2>
-                <button class="modal-close" id="modal-close">&times;</button>
+                <div class="modal-title-group">
+                    <div class="modal-icon-badge">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </div>
+                    <h2>Edit Account</h2>
+                </div>
+                <button class="modal-close" id="modal-close">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
             </div>
             <form id="edit-form">
                 <input type="hidden" id="modal-edit-id">
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="modal-name">Account Holder Name</label>
-                        <input type="text" id="modal-name" required>
+                        <div class="input-wrap"><input type="text" id="modal-name" required></div>
                     </div>
                     <div class="form-group">
                         <label for="modal-email">Email</label>
-                        <input type="email" id="modal-email">
+                        <div class="input-wrap"><input type="email" id="modal-email"></div>
                     </div>
                     <div class="form-group">
                         <label for="modal-phone">Phone</label>
-                        <input type="tel" id="modal-phone">
+                        <div class="input-wrap"><input type="tel" id="modal-phone"></div>
                     </div>
                     <div class="form-group">
                         <label for="modal-type">Account Type</label>
-                        <select id="modal-type" required>
-                            <option value="SAVINGS">Savings</option>
-                            <option value="CURRENT">Current</option>
-                        </select>
+                        <div class="select-wrap">
+                            <select id="modal-type" required>
+                                <option value="SAVINGS">Savings Account</option>
+                                <option value="CURRENT">Current Account</option>
+                            </select>
+                            <svg class="select-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="modal-balance">Balance (₹)</label>
-                        <input type="number" id="modal-balance" min="0" step="0.01" required>
+                        <div class="input-wrap input-prefix">
+                            <span class="input-prefix-symbol">₹</span>
+                            <input type="number" id="modal-balance" min="0" step="0.01" required style="padding-left: 2.5rem;">
+                        </div>
                     </div>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- ===== DEPOSIT / WITHDRAW MODAL ===== -->
+    <!-- ==============================
+         DEPOSIT / WITHDRAW MODAL
+    =============================== -->
     <div class="modal-overlay" id="txn-modal-overlay">
         <div class="modal modal-sm">
             <div class="modal-header">
-                <h2 id="txn-modal-title">Deposit Money</h2>
-                <button class="modal-close" id="txn-modal-close">&times;</button>
+                <div class="modal-title-group">
+                    <div class="modal-icon-badge" id="txn-modal-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+                    </div>
+                    <h2 id="txn-modal-title">Deposit Funds</h2>
+                </div>
+                <button class="modal-close" id="txn-modal-close">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
             </div>
-            <div class="txn-account-info" id="txn-account-info">
-                <!-- Populated dynamically -->
-            </div>
+            <div class="txn-account-info" id="txn-account-info"></div>
             <form id="txn-form">
                 <input type="hidden" id="txn-account-id">
                 <input type="hidden" id="txn-type">
                 <div class="form-group">
                     <label for="txn-amount">Amount (₹) <span class="required">*</span></label>
-                    <input type="number" id="txn-amount" placeholder="Enter amount" min="0.01" step="0.01" required>
+                    <div class="input-wrap input-prefix">
+                        <span class="input-prefix-symbol">₹</span>
+                        <input type="number" id="txn-amount" placeholder="0.00" min="0.01" step="0.01" required style="padding-left: 2.5rem;">
+                    </div>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn btn-ghost" onclick="closeTxnModal()">Cancel</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeTxnModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary" id="txn-submit-btn">
                         <span id="txn-btn-text">Confirm Deposit</span>
                     </button>
@@ -249,71 +645,215 @@
         </div>
     </div>
 
-    <!-- ===== TRANSACTION HISTORY MODAL ===== -->
+    <!-- ==============================
+         TRANSACTION HISTORY MODAL
+    =============================== -->
     <div class="modal-overlay" id="history-overlay">
         <div class="modal modal-lg">
             <div class="modal-header">
-                <h2 id="history-title">Transaction History</h2>
-                <button class="modal-close" id="history-close">&times;</button>
+                <div class="modal-title-group">
+                    <div class="modal-icon-badge">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                    </div>
+                    <h2 id="history-title">Transaction History</h2>
+                </div>
+                <button class="modal-close" id="history-close">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
             </div>
-            <div class="history-account-info" id="history-account-info">
-                <!-- Populated dynamically -->
-            </div>
+            <div class="history-account-info" id="history-account-info"></div>
             <div id="history-loading" class="history-loading" style="display:none;">
-                <div class="spinner"></div>
-                <span>Loading transactions...</span>
+                <!-- Skeleton rows for history -->
+                <table style="width:100%">
+                    <tbody id="history-skeleton-tbody">
+                        <tr class="skeleton-row">
+                            <td><div class="skeleton skeleton-cell skeleton-cell-sm"></div></td>
+                            <td><div class="skeleton skeleton-cell skeleton-cell-lg"></div></td>
+                            <td><div class="skeleton skeleton-cell skeleton-cell-sm"></div></td>
+                            <td><div class="skeleton skeleton-cell skeleton-cell-md"></div></td>
+                            <td><div class="skeleton skeleton-cell skeleton-cell-md"></div></td>
+                        </tr>
+                        <tr class="skeleton-row">
+                            <td><div class="skeleton skeleton-cell skeleton-cell-sm"></div></td>
+                            <td><div class="skeleton skeleton-cell skeleton-cell-full"></div></td>
+                            <td><div class="skeleton skeleton-cell skeleton-cell-sm"></div></td>
+                            <td><div class="skeleton skeleton-cell skeleton-cell-md"></div></td>
+                            <td><div class="skeleton skeleton-cell skeleton-cell-md"></div></td>
+                        </tr>
+                        <tr class="skeleton-row">
+                            <td><div class="skeleton skeleton-cell skeleton-cell-sm"></div></td>
+                            <td><div class="skeleton skeleton-cell skeleton-cell-lg"></div></td>
+                            <td><div class="skeleton skeleton-cell skeleton-cell-sm"></div></td>
+                            <td><div class="skeleton skeleton-cell skeleton-cell-md"></div></td>
+                            <td><div class="skeleton skeleton-cell skeleton-cell-md"></div></td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
             <div class="table-wrapper" id="history-table-wrapper" style="display:none;">
                 <table id="history-table">
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Date & Time</th>
+                            <th>Date &amp; Time</th>
                             <th>Type</th>
                             <th>Amount</th>
                             <th>Balance After</th>
                         </tr>
                     </thead>
-                    <tbody id="history-tbody">
-                        <!-- Populated dynamically -->
-                    </tbody>
+                    <tbody id="history-tbody"></tbody>
                 </table>
             </div>
             <div class="history-pagination" id="history-pagination" style="display:none;">
-                <button class="btn btn-ghost btn-sm" id="history-prev-btn">Previous</button>
+                <button class="btn btn-secondary btn-sm" id="history-prev-btn">← Previous</button>
                 <span id="history-page-info">Page 1 of 1</span>
-                <button class="btn btn-ghost btn-sm" id="history-next-btn">Next</button>
+                <button class="btn btn-secondary btn-sm" id="history-next-btn">Next →</button>
             </div>
             <div id="history-empty" class="empty-state" style="display:none;">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                <div class="empty-visual">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                </div>
                 <h3>No transactions yet</h3>
-                <p>Deposit or withdraw money to see transaction history.</p>
+                <p>Deposit or withdraw to see your history here.</p>
             </div>
         </div>
     </div>
 
-    <!-- ===== TOAST NOTIFICATION ===== -->
+    <!-- Toast container -->
     <div id="toast-container"></div>
 
+    <!-- Global loading -->
     <div id="global-loading" class="global-loading" style="display:none;">
-        <div class="spinner"></div>
-        <span>Processing...</span>
+        <div class="loading-card">
+            <div class="spinner"></div>
+            <span>Processing…</span>
+        </div>
     </div>
 
-    <!-- ===== DELETE CONFIRMATION ===== -->
+    <!-- Delete confirmation -->
     <div class="modal-overlay" id="delete-overlay">
         <div class="modal modal-sm">
             <div class="modal-header">
-                <h2>Confirm Deletion</h2>
-                <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+                <div class="modal-title-group">
+                    <div class="modal-icon-badge danger">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                    </div>
+                    <h2>Delete Account</h2>
+                </div>
+                <button class="modal-close" onclick="closeDeleteModal()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
             </div>
-            <p class="delete-message">Are you sure you want to delete this account? This action cannot be undone.</p>
+            <div class="delete-warning-box">
+                <p>This action will <strong>permanently delete</strong> this account and all associated data. It cannot be undone.</p>
+            </div>
             <div class="form-actions">
-                <button class="btn btn-ghost" onclick="closeDeleteModal()">Cancel</button>
-                <button class="btn btn-danger" id="confirm-delete-btn">Delete Account</button>
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn btn-danger" id="confirm-delete-btn">Delete Permanently</button>
             </div>
         </div>
     </div>
+
+    <!-- ==============================
+         THEME TOGGLE + MODAL ENHANCEMENT JS
+         (Minimal additions — no existing logic touched)
+    =============================== -->
+    <script>
+    // ── Theme System ──────────────────────────────────
+    (function() {
+      var btn = document.getElementById('theme-toggle-btn');
+      if (!btn) return;
+
+      function getTheme() {
+        return document.documentElement.getAttribute('data-theme') || 'light';
+      }
+
+      function setTheme(t) {
+        document.documentElement.setAttribute('data-theme', t);
+        localStorage.setItem('nexbank-theme', t);
+      }
+
+      btn.addEventListener('click', function() {
+        var current = getTheme();
+        setTheme(current === 'dark' ? 'light' : 'dark');
+      });
+    })();
+
+    // ── Smooth Modal Close Helper ─────────────────────
+    // Wraps any overlay close to play exit animation first.
+    // Your app.js's closeModal / closeTxnModal / etc. should call hideOverlay().
+    // If app.js directly removes .active, this patch intercepts via MutationObserver.
+    (function() {
+      var overlayIds = [
+        'modal-overlay',
+        'txn-modal-overlay',
+        'history-overlay',
+        'delete-overlay'
+      ];
+
+      overlayIds.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+
+        // Patch: when clicking overlay backdrop, animate out
+        el.addEventListener('click', function(e) {
+          if (e.target === el && el.classList.contains('active')) {
+            animateClose(el);
+          }
+        });
+      });
+
+      // Expose a helper your existing close functions can optionally call
+      window._animateModalClose = function(overlayEl) {
+        animateClose(overlayEl);
+      };
+
+      function animateClose(el) {
+        el.classList.add('closing');
+        el.addEventListener('animationend', function onEnd() {
+          el.classList.remove('closing', 'active');
+          el.removeEventListener('animationend', onEnd);
+        }, { once: true });
+      }
+
+      // Keyboard: Escape key closes topmost active modal
+      document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Escape') return;
+        var active = overlayIds.map(function(id) {
+          return document.getElementById(id);
+        }).filter(function(el) {
+          return el && el.classList.contains('active');
+        });
+        if (active.length) {
+          animateClose(active[active.length - 1]);
+        }
+      });
+    })();
+
+    // ── Skeleton clear on data load ───────────────────
+    // Waits for accounts-tbody to get real content and removes skeleton rows.
+    (function() {
+      var tbody = document.getElementById('accounts-tbody');
+      if (!tbody) return;
+      var skeletonRows = tbody.querySelectorAll('.skeleton-row');
+
+      var obs = new MutationObserver(function() {
+        var hasRealRows = tbody.querySelector('tr:not(.skeleton-row)');
+        if (hasRealRows) {
+          skeletonRows.forEach(function(r) { r.remove(); });
+          obs.disconnect();
+        }
+      });
+
+      obs.observe(tbody, { childList: true });
+
+      // Safety: clear skeletons after 6s regardless
+      setTimeout(function() {
+        skeletonRows.forEach(function(r) { if (r.parentNode) r.remove(); });
+        obs.disconnect();
+      }, 6000);
+    })();
+    </script>
 
     <script src="app.js"></script>
 </body>

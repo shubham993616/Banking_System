@@ -1,123 +1,84 @@
 # Banking System (Full Stack)
 
-Production-ready banking application with a Spring Boot REST backend and vanilla HTML/CSS/JS frontend.
+Production-style banking application with OTP-based authentication, JWT authorization, and secured account operations.
 
-## Project Overview
+## Overview
 
-- Backend module: `account-service` (Java 17, Spring Boot, Spring Data JPA, Validation)
-- Frontend module: `frontend` (single-page UI using vanilla JavaScript + Fetch API)
+- Backend module: `account-service` (Java 17, Spring Boot 3)
+- Frontend module: `frontend` (Vanilla HTML/CSS/JavaScript)
 - Database:
   - Default: H2 file database
   - Optional: MySQL profile
 
-## Features
+## Security Features
 
-- Account CRUD (create, list, get by id, update, delete)
-- Deposit and withdraw operations with business rules
-- Transaction history with pagination
-- Optimistic locking for safe concurrent updates
-- Standardized API response envelope (`status`, `message`, `data`, `timestamp`)
-- Structured validation and exception handling
-- Modern UI with modals, toasts, loading states, and transaction pagination controls
+- Spring Security with stateless JWT authentication
+- OTP verification for **registration** and **login**
+- BCrypt password hashing
+- Role-based access control (`USER`, `ADMIN`)
+- Ownership enforcement for account operations
 
-## Tech Stack
+## Auth Flow (Implemented)
 
-- Java 17
-- Spring Boot 3
-- Spring Web / Spring Data JPA / Bean Validation
-- H2 / MySQL
-- JUnit 5 + Mockito
-- HTML / CSS / JavaScript (vanilla)
+### Register + OTP
+
+1. `POST /auth/register` with `name`, `email`, `password`
+2. System creates user in `PENDING` state
+3. OTP (REGISTER type) generated and printed in backend logs
+4. `POST /auth/verify-register-otp` with `email`, `code`
+5. User becomes `ACTIVE`
+
+### Login + OTP + JWT
+
+1. `POST /auth/login` with `email`, `password`
+2. OTP (LOGIN type) generated and printed in backend logs
+3. `POST /auth/verify-login-otp` with `email`, `code`
+4. Backend returns JWT token
+5. Frontend stores token and sends `Authorization: Bearer <jwt>` automatically
+
+## Role Behavior
+
+- `USER`
+  - Accesses own accounts via `/api/accounts/me`
+  - Can perform transactions only on owned accounts
+- `ADMIN`
+  - Accesses all accounts via `/api/accounts`
+  - Can access admin users endpoint: `/auth/admin/users`
 
 ## Backend API Endpoints
 
-Base URL: `http://localhost:8081/api/accounts`
+### Public Auth Endpoints
 
-- `POST /api/accounts` - create account
-- `GET /api/accounts` - list accounts
-- `GET /api/accounts/{id}` - get account by id
-- `PUT /api/accounts/{id}` - update account
-- `DELETE /api/accounts/{id}` - delete account
-- `POST /api/accounts/{id}/deposit` - deposit amount
-- `POST /api/accounts/{id}/withdraw` - withdraw amount
-- `GET /api/accounts/{id}/transactions?page=0&size=10` - paginated transaction history
+- `POST /auth/register`
+- `POST /auth/verify-register-otp`
+- `POST /auth/login`
+- `POST /auth/verify-login-otp`
 
-## Example Requests
+### Protected Account Endpoints
 
-Create account:
+- `POST /api/accounts`
+- `GET /api/accounts` (ADMIN)
+- `GET /api/accounts/me` (USER self-view)
+- `GET /api/accounts/{id}`
+- `PUT /api/accounts/{id}`
+- `DELETE /api/accounts/{id}`
+- `POST /api/accounts/{id}/deposit`
+- `POST /api/accounts/{id}/withdraw`
+- `POST /api/accounts/transfer`
+- `GET /api/accounts/{id}/transactions?page=0&size=10`
 
-```json
-{
-  "accountHolderName": "Shubham Kumar",
-  "accountType": "SAVINGS",
-  "balance": 5000,
-  "email": "shubham@email.com",
-  "phoneNumber": "+91-9876543210"
-}
-```
+## Frontend Auth UI
 
-Deposit / Withdraw request:
+The frontend now supports complete secure flow:
 
-```json
-{
-  "amount": 250.00
-}
-```
+- Register form
+- Register OTP verification form
+- Login form
+- Login OTP verification form
+- JWT session banner with role and logout
+- Auto-attached bearer token for all secured banking API calls
 
-## Example API Responses
-
-Success response:
-
-```json
-{
-  "status": 200,
-  "message": "Operation successful",
-  "data": {},
-  "timestamp": "2026-04-18T13:40:11.123"
-}
-```
-
-Validation error (`400`):
-
-```json
-{
-  "status": 400,
-  "message": "Validation failed",
-  "data": {
-    "accountHolderName": "Account holder name is required",
-    "accountType": "Account type is required"
-  },
-  "timestamp": "2026-04-18T13:40:11.123"
-}
-```
-
-Concurrency conflict (`409`):
-
-```json
-{
-  "status": 409,
-  "message": "Concurrent update detected. Please retry.",
-  "data": null,
-  "timestamp": "2026-04-18T13:40:11.123"
-}
-```
-
-Paginated transaction response:
-
-```json
-{
-  "status": 200,
-  "message": "Transactions retrieved successfully",
-  "data": {
-    "content": [],
-    "page": 0,
-    "size": 10,
-    "totalElements": 25,
-    "totalPages": 3
-  },
-  "timestamp": "2026-04-18T13:40:11.123"
-}
-```
+If token expires or becomes invalid, frontend clears local session and returns to auth screen.
 
 ## Run Locally
 
@@ -128,68 +89,73 @@ cd account-service
 mvn spring-boot:run
 ```
 
-Backend runs on: `http://localhost:8081`
+Backend URL: `http://localhost:8081`
+
+Default bootstrapped admin:
+
+- Email: `admin@banking.com`
+- Password: `Admin@12345`
 
 ### 2) Frontend
 
-Open `frontend/index.html` directly in the browser (or serve via any static server).
+Open `frontend/index.html` directly in browser (or serve with any static server).
+
+Recommended frontend origin for CORS default config: `http://localhost:5500`
 
 ## Testing
-
-Run unit tests:
 
 ```bash
 cd account-service
 mvn test
 ```
 
-## Screenshots
+## Tech Stack
 
-- Add dashboard screenshot here
-- Add create-account form screenshot here
-- Add transaction-history modal screenshot here
+- Java 17
+- Spring Boot 3
+- Spring Web / Spring Data JPA / Validation / Security
+- JWT (`jjwt`)
+- H2 / MySQL
+- JUnit 5 + Mockito
+- HTML / CSS / JavaScript (Vanilla)
+
+## API Response Format
+
+All APIs use:
+
+```json
+{
+  "status": 200,
+  "message": "Operation successful",
+  "data": {},
+  "timestamp": "2026-04-18T13:40:11.123"
+}
+
+```
 
 
 
-## Error Handling
+🎨 UI Upgrade
 
-- 400 → Validation errors
-- 404 → Resource not found
-- 409 → Concurrency conflict
-- 500 → Internal server error
+The frontend has been significantly improved to deliver a modern, responsive, and user-friendly banking experience.
 
-All responses follow a standardized ApiResponse format.
+✨ Improvements
+🌗 Added Dark & Light mode toggle
+🧊 Implemented Glassmorphism UI (especially in dark mode)
+🌫️ Added blur background effect for modals (glass effect)
+⚡ Introduced smooth animations and transitions
+Scale-in modals
+Fade effects for UI components
+📦 Added Skeleton loading screens for better UX during data fetch
+📱 Improved overall layout for better responsiveness and visual clarity
+🎯 Result
 
-## Validation
+The UI now feels like a modern fintech dashboard with smoother interactions, better visual hierarchy, and an enhanced user experience.
 
-- Amount must be greater than 0
-- Account holder name cannot be empty
-- Account type must be valid
-- Uses Jakarta Bean Validation (@NotNull, @DecimalMin, etc.)
 
-## Business Rules
 
-- SAVINGS account:
-  - Minimum balance: ₹1000
+## Notes
 
-- CURRENT account:
-  - Overdraft allowed up to: -₹5000
-
-  ## Architecture
-
-- Layered architecture:
-  - Controller (API layer)
-  - Service (business logic)
-  - Repository (data access)
-- DTO pattern used for API communication
-- Global exception handling for consistent responses
-- Optimistic locking using @Version for concurrency control
-
-## Database Configuration
-
-Default: H2 (file-based)
-
-To use MySQL:
-- Configure application-mysql.properties
-- Set active profile:
-  spring.profiles.active=mysql
+- OTP delivery is currently console/log based for development.
+- Configure stronger JWT secret and admin credentials for production.
+- Keep `Authorization` header enabled in frontend clients for secured APIs.

@@ -5,6 +5,7 @@ import com.banking.accountservice.dto.AccountDTO;
 import com.banking.accountservice.dto.PagedResponse;
 import com.banking.accountservice.dto.AccountUpdateRequest;
 import com.banking.accountservice.dto.TransactionDTO;
+import com.banking.accountservice.dto.TransferRequest;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -20,6 +21,9 @@ public interface AccountService {
 
     /** Get all accounts. */
     List<AccountDTO> getAllAccounts();
+
+    /** Get accounts of currently authenticated user. */
+    List<AccountDTO> getMyAccounts();
 
     /** Get a single account by its ID. */
     AccountDTO getAccountById(Long id);
@@ -41,4 +45,7 @@ public interface AccountService {
 
     /** Get paged transactions for an account, sorted by latest first. */
     PagedResponse<TransactionDTO> getTransactions(Long accountId, int page, int size);
+
+    /** Transfer money between two accounts atomically. */
+    void transfer(TransferRequest request);
 }

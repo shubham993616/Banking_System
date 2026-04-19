@@ -5,5 +5,7 @@ package com.banking.accountservice.entity;
  */
 public enum TransactionType {
     DEPOSIT,
-    WITHDRAW
+    WITHDRAW,
+    TRANSFER_DEBIT,
+    TRANSFER_CREDIT
 }

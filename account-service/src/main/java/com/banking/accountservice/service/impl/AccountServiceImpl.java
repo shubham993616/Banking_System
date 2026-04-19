@@ -10,6 +10,7 @@ import com.banking.accountservice.exception.InsufficientBalanceException;
 import com.banking.accountservice.exception.ResourceNotFoundException;
 import com.banking.accountservice.repository.AccountRepository;
 import com.banking.accountservice.repository.TransactionRepository;
+import com.banking.accountservice.security.SecurityUtils;
 import com.banking.accountservice.service.AccountService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -46,11 +47,14 @@ public class AccountServiceImpl implements AccountService {
 
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
+    private final SecurityUtils securityUtils;
 
     public AccountServiceImpl(AccountRepository accountRepository,
-                              TransactionRepository transactionRepository) {
+                              TransactionRepository transactionRepository,
+                              SecurityUtils securityUtils) {
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
+        this.securityUtils = securityUtils;
     }
 
     // =============================================
@@ -64,6 +68,16 @@ public class AccountServiceImpl implements AccountService {
         Account account = AccountMapper.toEntity(request);
         String accountNumber = generateUniqueAccountNumber();
         account.setAccountNumber(accountNumber);
+
+        if (securityUtils.hasRole("ADMIN")) {
+            if (request.getEmail() == null || request.getEmail().isBlank()) {
+                throw new IllegalArgumentException(
+                        "Customer email is required when an administrator creates an account (links the account to that customer's login).");
+            }
+            account.setEmail(request.getEmail().trim().toLowerCase());
+        } else {
+            account.setEmail(requireCurrentUserEmail());
+        }
 
         Account savedAccount = accountRepository.save(account);
         log.info("Account created successfully: {} ({})",
@@ -84,9 +98,19 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<AccountDTO> getMyAccounts() {
+        String email = requireCurrentUserEmail();
+        return accountRepository.findByEmail(email)
+                .stream()
+                .map(AccountMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public AccountDTO getAccountById(Long id) {
         log.debug("Fetching account with ID: {}", id);
-        Account account = findAccountOrThrow(id);
+        Account account = findOwnedAccountOrThrow(id);
         return AccountMapper.toDTO(account);
     }
 
@@ -96,32 +120,40 @@ public class AccountServiceImpl implements AccountService {
         log.debug("Fetching account with number: {}", accountNumber);
         Account account = accountRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Account", "accountNumber", accountNumber));
+        if (!securityUtils.hasRole("ADMIN")) {
+            String email = requireCurrentUserEmail();
+            if (account.getEmail() == null || !email.equalsIgnoreCase(account.getEmail().trim())) {
+                throw new ResourceNotFoundException("Account", "accountNumber", accountNumber);
+            }
+        }
         return AccountMapper.toDTO(account);
     }
 
     @Override
     public AccountDTO updateAccount(Long id, AccountUpdateRequest request) {
         log.info("Updating account with ID: {}", id);
-        Account existing = findAccountOrThrow(id);
+        Account existing = findOwnedAccountOrThrow(id);
+        if (!securityUtils.hasRole("ADMIN")) {
+            request.setEmail(requireCurrentUserEmail());
+        }
         AccountMapper.applyUpdate(request, existing);
         Account updated = accountRepository.save(existing);
         log.info("Account updated successfully: {}", updated.getAccountNumber());
         return AccountMapper.toDTO(updated);
     }
 
-   @Override
-public void deleteAccount(Long id) {
-    log.info("Deleting account with ID: {}", id);
+    @Override
+    public void deleteAccount(Long id) {
+        log.info("Deleting account with ID: {}", id);
 
-    Account account = findAccountOrThrow(id);
+        Account account = findOwnedAccountOrThrow(id);
 
-    // 🔥 delete transactions first
-    transactionRepository.deleteByAccountId(id);
+        transactionRepository.deleteByAccountId(id);
 
-    accountRepository.delete(account);
+        accountRepository.delete(account);
 
-    log.info("Account deleted successfully: ID {}", id);
-}
+        log.info("Account deleted successfully: ID {}", id);
+    }
 
     // =============================================
     // Banking Operations (Deposit / Withdraw)
@@ -134,7 +166,7 @@ public void deleteAccount(Long id) {
         try {
             validatePositiveAmount(amount);
 
-            Account account = findAccountOrThrow(accountId);
+            Account account = findOwnedAccountOrThrow(accountId);
 
             BigDecimal newBalance = account.getBalance().add(amount);
             account.setBalance(newBalance);
@@ -157,7 +189,7 @@ public void deleteAccount(Long id) {
         log.info("Withdraw: accountId={}, amount={}", accountId, amount);
         try {
             validatePositiveAmount(amount);
-            Account account = findAccountOrThrow(accountId);
+            Account account = findOwnedAccountOrThrow(accountId);
             BigDecimal newBalance = account.getBalance().subtract(amount);
 
             if (account.getAccountType() == AccountType.SAVINGS) {
@@ -201,7 +233,7 @@ public void deleteAccount(Long id) {
     public PagedResponse<TransactionDTO> getTransactions(Long accountId, int page, int size) {
         log.debug("Fetching transactions for account ID: {}", accountId);
 
-        findAccountOrThrow(accountId);
+        findOwnedAccountOrThrow(accountId);
 
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp"));
         Page<Transaction> transactionPage = transactionRepository.findByAccountId(accountId, pageable);
@@ -219,6 +251,32 @@ public void deleteAccount(Long id) {
         );
     }
 
+    @Override
+    @Transactional
+    public void transfer(TransferRequest request) {
+        if (request.getFromAccountId().equals(request.getToAccountId())) {
+            throw new IllegalArgumentException("Source and destination account must be different.");
+        }
+        validatePositiveAmount(request.getAmount());
+
+        Account from = findOwnedAccountOrThrow(request.getFromAccountId());
+        Account to = findAccountOrThrow(request.getToAccountId());
+
+        BigDecimal sourcePostBalance = from.getBalance().subtract(request.getAmount());
+        if (sourcePostBalance.compareTo(BigDecimal.ZERO) < 0) {
+            throw new InsufficientBalanceException("TRANSFER", "Insufficient balance for transfer.");
+        }
+
+        from.setBalance(sourcePostBalance);
+        to.setBalance(to.getBalance().add(request.getAmount()));
+
+        accountRepository.save(from);
+        accountRepository.save(to);
+
+        transactionRepository.save(new Transaction(from, TransactionType.TRANSFER_DEBIT, request.getAmount(), from.getBalance()));
+        transactionRepository.save(new Transaction(to, TransactionType.TRANSFER_CREDIT, request.getAmount(), to.getBalance()));
+    }
+
     // =============================================
     // Private Helpers
     // =============================================
@@ -228,6 +286,15 @@ public void deleteAccount(Long id) {
      */
     private Account findAccountOrThrow(Long id) {
         return accountRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Account", "id", id));
+    }
+
+    private Account findOwnedAccountOrThrow(Long id) {
+        if (securityUtils.hasRole("ADMIN")) {
+            return findAccountOrThrow(id);
+        }
+        String email = requireCurrentUserEmail();
+        return accountRepository.findByIdAndEmail(id, email)
                 .orElseThrow(() -> new ResourceNotFoundException("Account", "id", id));
     }
 
@@ -250,5 +317,13 @@ public void deleteAccount(Long id) {
                     .substring(0, 10).toUpperCase();
         } while (accountRepository.existsByAccountNumber(accountNumber));
         return accountNumber;
+    }
+
+    private String requireCurrentUserEmail() {
+        String email = securityUtils.currentUserEmail();
+        if (email == null) {
+            throw new IllegalArgumentException("Authenticated user context not found.");
+        }
+        return email.toLowerCase();
     }
 }

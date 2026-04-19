@@ -6,13 +6,15 @@ import com.banking.accountservice.entity.AccountType;
 import com.banking.accountservice.exception.InsufficientBalanceException;
 import com.banking.accountservice.repository.AccountRepository;
 import com.banking.accountservice.repository.TransactionRepository;
+import com.banking.accountservice.security.SecurityUtils;
 import com.banking.accountservice.service.impl.AccountServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -33,13 +35,19 @@ class AccountServiceImplTest {
     @Mock
     private TransactionRepository transactionRepository;
 
-    @InjectMocks
     private AccountServiceImpl accountService;
 
     private Account account;
 
     @BeforeEach
     void setUp() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("admin@banking.com", null, java.util.List.of(
+                        () -> "ROLE_ADMIN"
+                ))
+        );
+        accountService = new AccountServiceImpl(accountRepository, transactionRepository, new SecurityUtils());
+
         account = new Account();
         account.setId(1L);
         account.setAccountHolderName("Test User");
