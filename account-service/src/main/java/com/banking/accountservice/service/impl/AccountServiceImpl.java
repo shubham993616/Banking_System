@@ -5,7 +5,6 @@ import com.banking.accountservice.entity.Account;
 import com.banking.accountservice.entity.AccountType;
 import com.banking.accountservice.entity.Transaction;
 import com.banking.accountservice.entity.TransactionType;
-import com.banking.accountservice.exception.DuplicateResourceException;
 import com.banking.accountservice.exception.InsufficientBalanceException;
 import com.banking.accountservice.exception.ResourceNotFoundException;
 import com.banking.accountservice.repository.AccountRepository;
