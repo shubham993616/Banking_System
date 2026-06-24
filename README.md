@@ -6,9 +6,7 @@ Production-style banking application with OTP-based authentication, JWT authoriz
 
 - Backend module: `account-service` (Java 17, Spring Boot 3)
 - Frontend module: `frontend` (Vanilla HTML/CSS/JavaScript)
-- Database:
-  - Default: H2 file database
-  - Optional: MySQL profile
+- Database: **MySQL** (local, `banking_accounts` on port 3306)
 
 ## Security Features
 
@@ -84,6 +82,8 @@ If token expires or becomes invalid, frontend clears local session and returns t
 
 ### 1) Backend
 
+**Prerequisites:** MySQL 8 running on `localhost:3306`. Default credentials: `root` / `root` (override with `DB_USERNAME` / `DB_PASSWORD`). Set `ADMIN_EMAIL` and `JWT_SECRET` before starting.
+
 ```bash
 cd account-service
 mvn spring-boot:run
@@ -115,7 +115,7 @@ mvn test
 - Spring Boot 3
 - Spring Web / Spring Data JPA / Validation / Security
 - JWT (`jjwt`)
-- H2 / MySQL
+- MySQL
 - JUnit 5 + Mockito
 - HTML / CSS / JavaScript (Vanilla)
 
@@ -154,8 +154,14 @@ The UI now feels like a modern fintech dashboard with smoother interactions, bet
 
 
 
+## Deployment
+
+Cloud deployment uses **Vercel** (frontend) + **Render** (backend) + **Railway MySQL** (database).
+
+See **[DEPLOYMENT.md](DEPLOYMENT.md)** for the full step-by-step guide.
+
 ## Notes
 
-- OTP delivery is currently console/log based for development.
-- Configure stronger JWT secret and admin credentials for production.
+- OTP delivery requires Gmail SMTP (`MAIL_USERNAME`, `MAIL_PASSWORD`).
+- Configure JWT secret and admin credentials via environment variables for production.
 - Keep `Authorization` header enabled in frontend clients for secured APIs.

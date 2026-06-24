@@ -1,0 +1,36 @@
+# Render Blueprint — Banking System API
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: banking-account-service
+    runtime: java
+    region: oregon
+    plan: free
+    rootDir: account-service
+    buildCommand: mvn clean package -DskipTests
+    startCommand: java -jar target/account-service-1.0.0.jar
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: JAVA_VERSION
+        value: "17"
+      # --- Set these in Render dashboard (sync from Railway MySQL) ---
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: CORS_ORIGIN_PATTERNS
+        sync: false

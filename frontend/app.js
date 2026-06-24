@@ -1,5 +1,5 @@
-const API_AUTH_BASE = 'http://localhost:8081/api/auth';
-const API_BASE_URL = 'http://localhost:8081/api/accounts';
+const API_AUTH_BASE = `${window.APP_CONFIG.apiBaseUrl}/api/auth`;
+const API_BASE_URL = `${window.APP_CONFIG.apiBaseUrl}/api/accounts`;
 const TOKEN_KEY = 'nexbank.jwt';
 
 const CREATE_FORM_SUBTITLE_DEFAULT =
